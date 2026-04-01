@@ -38,22 +38,32 @@ Place your source icon as `icon.png` in the repo root. Output goes to `output/`.
 
 Edit `config.json` to control the background of `splash.png` and `icon.png`. The file has one top-level key, `"background"`, with a `"type"` that determines which mode is used.
 
-### Average color (default)
+### Auto gradient (default)
 
-Computes the alpha-weighted average color of your icon and uses a slightly darkened version as the background.
+Extracts the dominant colors from your icon and generates a two-color gradient that complements it. This is the default when no config file exists or when `"type"` is omitted.
 
 ```json
 {
   "background": {
-    "type": "average",
-    "darken": 0.85
+    "type": "auto"
   }
 }
 ```
 
-| Field    | Required | Default | Description                                       |
-| -------- | -------- | ------- | ------------------------------------------------- |
-| `darken` | No       | `0.85`  | Multiplier applied to the average color (0.0-1.0) |
+You can override the gradient direction while still using auto-picked colors:
+
+```json
+{
+  "background": {
+    "type": "auto",
+    "direction": "to-bottom"
+  }
+}
+```
+
+| Field       | Required | Default            | Description                         |
+| ----------- | -------- | ------------------ | ----------------------------------- |
+| `direction` | No       | `"to-bottom-right"` | Named direction or angle in degrees |
 
 ### Solid color
 

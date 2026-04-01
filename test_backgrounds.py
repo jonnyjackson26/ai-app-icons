@@ -7,8 +7,11 @@ from pathlib import Path
 from generate_icons import generate_assets
 
 TESTS = {
-    "test_average": {
-        "background": {"type": "average"}
+    "test_auto_default": {
+        "background": {"type": "auto"}
+    },
+    "test_auto_vertical": {
+        "background": {"type": "auto", "direction": "to-bottom"}
     },
     "test_solid_dark": {
         "background": {"type": "solid", "color": "#1a1a2e"}
@@ -62,7 +65,6 @@ CONFIG_PATH = ROOT / "config.json"
 
 for name, config in TESTS.items():
     print(f"\n=== {name} ===")
-    # Write temp config
     CONFIG_PATH.write_text(json.dumps(config, indent=2))
     out_dir = ROOT / "test_output" / name
     try:
@@ -73,6 +75,6 @@ for name, config in TESTS.items():
         print(f"  ERROR: {e}")
 
 # Restore default config
-CONFIG_PATH.write_text(json.dumps({"background": {"type": "average"}}, indent=2) + "\n")
-print("\nRestored config.json to default (average).")
+CONFIG_PATH.write_text(json.dumps({"background": {"type": "auto"}}, indent=2) + "\n")
+print("\nRestored config.json to default (auto).")
 print("Done! Check test_output/ for results.")

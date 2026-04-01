@@ -2,7 +2,7 @@
 """
 Generate app icon assets from a single source icon.
 
-Reads background configuration from config.json (solid, gradient, image, or average).
+Reads background configuration from config.json (auto, solid, gradient, or image).
 
 Default behavior:
 - Input:  icon.png (repo root)
@@ -23,9 +23,8 @@ from pathlib import Path
 
 from PIL import Image
 
-from background import create_background
+from background import DEFAULT_BG_CONFIG, create_background
 
-# Assets that get a background vs transparent
 ASSETS = [
     {"name": "splash.png", "size": (1284, 2778), "icon_fraction": 0.33, "has_background": True},
     {"name": "adaptive-icon.png", "size": (1024, 1024), "icon_fraction": 0.72, "has_background": False},
@@ -33,8 +32,6 @@ ASSETS = [
     {"name": "icon.png", "size": (1024, 1024), "icon_fraction": 0.74, "has_background": True},
     {"name": "splash-icon.png", "size": (1024, 1024), "icon_fraction": 0.70, "has_background": False},
 ]
-
-DEFAULT_BG_CONFIG = {"type": "average"}
 
 
 def _tight_crop_rgba(image: Image.Image) -> Image.Image:
