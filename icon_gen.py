@@ -104,13 +104,11 @@ def edit_icon(
     instruction: str,
     *,
     size: str = "1024x1024",
-) -> Image.Image:
-    """Edit an existing icon based on a text instruction. Returns PIL Image (RGBA).
+) -> tuple[Image.Image, str]:
+    """Edit an existing icon based on a text instruction.
 
-    Uses the OpenAI Responses API with GPT-4o and the image_generation tool.
-    The model sees the actual image and generates an edited version in one call,
-    so edits like "make the ball black" modify the real image instead of
-    regenerating from scratch.
+    Returns (image, message) — the edited PIL Image (RGBA) and any text the
+    model included alongside the image.
     """
     client = _get_client()
 
@@ -140,10 +138,20 @@ def edit_icon(
         }],
     )
 
-    # Extract the generated image from the response
+    # Extract image and text from the response
+    image = None
+    text_parts: list[str] = []
+
     for item in response.output:
         if item.type == "image_generation_call":
             image_bytes = base64.b64decode(item.result)
-            return Image.open(BytesIO(image_bytes)).convert("RGBA")
+            image = Image.open(BytesIO(image_bytes)).convert("RGBA")
+        elif item.type == "message" and hasattr(item, "content"):
+            for block in item.content:
+                if hasattr(block, "text"):
+                    text_parts.append(block.text)
 
-    raise RuntimeError("The model did not generate an image. Try a different instruction.")
+    if image is None:
+        raise RuntimeError("The model did not generate an image. Try a different instruction.")
+
+    return image, "\n".join(text_parts)

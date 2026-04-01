@@ -120,11 +120,13 @@ def _handle_generate(session: Session) -> State:
 def _handle_refine(session: Session, instruction: str) -> State:
     """Edit the current icon based on the user's instruction."""
     try:
-        image = ui.run_with_spinner(
+        image, message = ui.run_with_spinner(
             "Editing your icon...",
             lambda: edit_icon(session.current_image, instruction),
         )
         session.current_image = image
+        if message.strip():
+            ui.show_info(message)
         _save_preview(session)
         return State.REVIEW
 
