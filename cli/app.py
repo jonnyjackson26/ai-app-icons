@@ -6,12 +6,12 @@ import os
 from enum import Enum, auto
 
 from dotenv import load_dotenv
-from openai import OpenAI
+from PIL import Image
 
 from cli import ui
 from cli.assets import generate_all_assets
 from cli.session import Session
-from icon_gen import generate_icon
+from icon_gen import edit_icon, generate_icon
 
 load_dotenv()
 
@@ -38,18 +38,17 @@ def main() -> None:
         )
         return
 
-    client = OpenAI(api_key=api_key)
     session = Session()
     state = State.WELCOME
 
     try:
         while state != State.EXIT:
-            state = _step(state, session, client)
+            state = _step(state, session)
     except KeyboardInterrupt:
         ui.show_goodbye()
 
 
-def _step(state: State, session: Session, client: OpenAI) -> State:
+def _step(state: State, session: Session) -> State:
     """Execute one state transition and return the next state."""
 
     if state == State.WELCOME:
@@ -58,12 +57,19 @@ def _step(state: State, session: Session, client: OpenAI) -> State:
 
     if state == State.DESCRIBE:
         session.reset()
-        description = ui.prompt_description()
-        session.add_description(description)
-        return State.GENERATE
+        source = ui.prompt_source()
+        if source == "upload":
+            path = ui.prompt_upload_path()
+            session.current_image = Image.open(path).convert("RGBA")
+            session.original_description = f"(uploaded: {path})"
+            ui.show_success(f"Loaded icon from {path}")
+            return State.REVIEW
+        else:
+            session.original_description = source
+            return State.GENERATE
 
     if state == State.GENERATE:
-        return _handle_generate(session, client)
+        return _handle_generate(session)
 
     if state == State.REVIEW:
         action = ui.prompt_action()
@@ -77,8 +83,7 @@ def _step(state: State, session: Session, client: OpenAI) -> State:
 
     if state == State.REFINE:
         refinement = ui.prompt_refinement()
-        session.add_description(refinement)
-        return State.GENERATE
+        return _handle_refine(session, refinement)
 
     if state == State.BACKGROUND:
         session.bg_config = ui.prompt_background()
@@ -95,31 +100,15 @@ def _step(state: State, session: Session, client: OpenAI) -> State:
     return State.EXIT
 
 
-def _handle_generate(session: Session, client: OpenAI) -> State:
-    """Build the prompt, generate the icon, and save a preview."""
+def _handle_generate(session: Session) -> State:
+    """Generate a brand-new icon from the description."""
     try:
-        # Build (or refine) the prompt
-        if len(session.description_history) > 1:
-            prompt = ui.run_with_spinner(
-                "Refining your description...",
-                lambda: session.build_refined_prompt(client),
-            )
-            ui.show_refined_prompt(prompt)
-        else:
-            prompt = session.build_refined_prompt(client)
-
-        # Generate the icon
         image = ui.run_with_spinner(
             "Generating your icon...",
-            lambda: generate_icon(prompt),
+            lambda: generate_icon(session.original_description),
         )
         session.current_image = image
-
-        preview_path = session.output_dir / "preview.png"
-        preview_path.parent.mkdir(parents=True, exist_ok=True)
-        image.save(preview_path, format="PNG")
-
-        ui.show_success(f"Icon generated! Preview saved: {preview_path}")
+        _save_preview(session)
         return State.REVIEW
 
     except Exception as e:
@@ -128,10 +117,35 @@ def _handle_generate(session: Session, client: OpenAI) -> State:
         return State.DESCRIBE
 
 
+def _handle_refine(session: Session, instruction: str) -> State:
+    """Edit the current icon based on the user's instruction."""
+    try:
+        image = ui.run_with_spinner(
+            "Editing your icon...",
+            lambda: edit_icon(session.current_image, instruction),
+        )
+        session.current_image = image
+        _save_preview(session)
+        return State.REVIEW
+
+    except Exception as e:
+        ui.show_error(f"Edit failed: {e}")
+        ui.show_info("The icon was not changed. Try a different instruction.")
+        return State.REVIEW
+
+
+def _save_preview(session: Session) -> None:
+    """Save the current image as a preview and notify the user."""
+    preview_path = session.output_dir / "preview.png"
+    preview_path.parent.mkdir(parents=True, exist_ok=True)
+    session.current_image.save(preview_path, format="PNG")
+    ui.show_success(f"Icon generated! Preview saved: {preview_path}")
+
+
 def _handle_export(session: Session) -> State:
     """Generate all asset sizes and display the summary."""
     try:
-        paths = ui.run_with_spinner(
+        ui.run_with_spinner(
             "Generating all asset sizes...",
             lambda: generate_all_assets(
                 session.current_image,

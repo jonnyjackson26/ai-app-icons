@@ -40,13 +40,36 @@ def show_welcome() -> None:
 # Prompts
 # ---------------------------------------------------------------------------
 
-def prompt_description() -> str:
-    """Ask the user to describe their app icon."""
+def prompt_source() -> str:
+    """Ask the user to describe their icon or upload one.
+
+    Returns the description string, or the literal "upload" to signal file upload.
+    """
+    console.print("[bold]How would you like to start?[/]")
+    console.print("  [bright_cyan][1][/] Describe an icon to generate")
+    console.print("  [bright_cyan][2][/] Upload an existing icon to refine")
+    console.print()
+
+    choice = Prompt.ask("[bold]Choose[/]", choices=["1", "2"], show_choices=False)
+
+    if choice == "2":
+        return "upload"
+
     while True:
         text = Prompt.ask("[bold green]Describe your app icon[/]")
         if text.strip():
             return text.strip()
         console.print("[dim]Please enter a description.[/]")
+
+
+def prompt_upload_path() -> Path:
+    """Ask for a path to an existing icon image."""
+    while True:
+        raw = Prompt.ask("[bold]Path to your icon image[/]")
+        path = Path(raw.strip())
+        if path.exists() and path.is_file():
+            return path
+        console.print(f"[red]File not found: {path}[/]")
 
 
 def prompt_refinement() -> str:
@@ -173,11 +196,6 @@ def show_error(message: str) -> None:
 
 def show_info(message: str) -> None:
     console.print(f"[dim]{message}[/]")
-
-
-def show_refined_prompt(prompt: str) -> None:
-    """Show the merged prompt that will be sent to the image generator."""
-    console.print(f"[dim]  Prompt: {prompt}[/]")
 
 
 def show_asset_table(output_dir: Path) -> None:

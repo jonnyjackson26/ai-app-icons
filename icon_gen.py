@@ -1,4 +1,4 @@
-"""Generate app icons using OpenAI's image generation API (gpt-image-1)."""
+"""Generate and edit app icons using OpenAI's image API (gpt-image-1)."""
 
 from __future__ import annotations
 
@@ -13,20 +13,7 @@ from PIL import Image
 
 load_dotenv()
 
-# --- Prompt engineering -------------------------------------------------------
-# The meta-prompt wraps the user's plain-language app description into a
-# detailed specification that reliably produces clean, professional app icons.
-#
-# Key design choices:
-#   * Transparent background — lets the existing background system (auto, solid,
-#     gradient, image) composite the icon onto styled canvases.
-#   * "No text" rule — text becomes unreadable below ~128 px and looks bad on
-#     app icons.  App-store guidelines discourage it too.
-#   * "No rounded-rect frame" — iOS/Android add their own mask; baking one in
-#     causes double-rounding artifacts.
-#   * Emphasis on simplicity & silhouette — icons must read at 48 px (favicon).
-#   * Flat style bias — gradients and 3D effects break down at small sizes and
-#     clash with most OS design languages.
+# --- Prompt templates ---------------------------------------------------------
 
 _ICON_PROMPT_TEMPLATE = """\
 Create a mobile app icon for the following app:
@@ -45,13 +32,45 @@ Design requirements — follow every point:
 10. Generous padding around the symbol (leave ~15% margin on each side).
 """
 
+_EDIT_PROMPT_TEMPLATE = """\
+Edit this app icon. Make the following change and NOTHING else:
+{instruction}
+
+Keep the exact same style, composition, and layout for everything not \
+mentioned. The background must remain transparent. No text or letters. \
+No rounded-rectangle border."""
+
 
 def build_icon_prompt(description: str) -> str:
     """Wrap a plain-language app description into an optimised icon-gen prompt."""
     return _ICON_PROMPT_TEMPLATE.format(description=description.strip())
 
 
-# --- API call -----------------------------------------------------------------
+def _build_edit_prompt(instruction: str) -> str:
+    """Build the edit instruction prompt."""
+    return _EDIT_PROMPT_TEMPLATE.format(instruction=instruction.strip())
+
+
+# --- Helpers ------------------------------------------------------------------
+
+def _get_client() -> OpenAI:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "OPENAI_API_KEY is not set.  "
+            "Add it to a .env file or export it as an environment variable."
+        )
+    return OpenAI(api_key=api_key)
+
+
+def _decode_image(result) -> Image.Image:
+    """Decode a base64 image from an OpenAI API response."""
+    image_base64 = result.data[0].b64_json
+    image_bytes = base64.b64decode(image_base64)
+    return Image.open(BytesIO(image_bytes)).convert("RGBA")
+
+
+# --- API calls ----------------------------------------------------------------
 
 def generate_icon(
     description: str,
@@ -60,27 +79,8 @@ def generate_icon(
     size: str = "1024x1024",
     output_path: Path | None = None,
 ) -> Image.Image:
-    """Call OpenAI to generate an app icon and return it as a PIL Image (RGBA).
-
-    Parameters
-    ----------
-    description:
-        Plain-language description of the app (e.g. "track temple attendance").
-    model:
-        OpenAI image model to use.
-    size:
-        Image dimensions.  1024x1024 is ideal for app icons.
-    output_path:
-        If given, save the raw PNG here as well.
-    """
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "OPENAI_API_KEY is not set.  "
-            "Add it to a .env file or export it as an environment variable."
-        )
-
-    client = OpenAI(api_key=api_key)
+    """Generate a new app icon from a text description. Returns PIL Image (RGBA)."""
+    client = _get_client()
     prompt = build_icon_prompt(description)
 
     result = client.images.generate(
@@ -90,12 +90,60 @@ def generate_icon(
         background="transparent",
     )
 
-    image_base64 = result.data[0].b64_json
-    image_bytes = base64.b64decode(image_base64)
-    image = Image.open(BytesIO(image_bytes)).convert("RGBA")
+    image = _decode_image(result)
 
     if output_path:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         image.save(output_path, format="PNG")
 
     return image
+
+
+def edit_icon(
+    source: Image.Image,
+    instruction: str,
+    *,
+    size: str = "1024x1024",
+) -> Image.Image:
+    """Edit an existing icon based on a text instruction. Returns PIL Image (RGBA).
+
+    Uses the OpenAI Responses API with GPT-4o and the image_generation tool.
+    The model sees the actual image and generates an edited version in one call,
+    so edits like "make the ball black" modify the real image instead of
+    regenerating from scratch.
+    """
+    client = _get_client()
+
+    # Encode the current image as base64
+    buf = BytesIO()
+    source.save(buf, format="PNG")
+    image_b64 = base64.b64encode(buf.getvalue()).decode()
+
+    prompt = _build_edit_prompt(instruction)
+
+    response = client.responses.create(
+        model="gpt-4o",
+        input=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "input_image",
+                    "image_url": f"data:image/png;base64,{image_b64}",
+                },
+                {"type": "input_text", "text": prompt},
+            ],
+        }],
+        tools=[{
+            "type": "image_generation",
+            "background": "transparent",
+            "size": size,
+        }],
+    )
+
+    # Extract the generated image from the response
+    for item in response.output:
+        if item.type == "image_generation_call":
+            image_bytes = base64.b64decode(item.result)
+            return Image.open(BytesIO(image_bytes)).convert("RGBA")
+
+    raise RuntimeError("The model did not generate an image. Try a different instruction.")
