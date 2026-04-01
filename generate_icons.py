@@ -72,13 +72,27 @@ def load_config(config_path: Path) -> dict:
 
 
 def generate_assets(input_path: Path, output_dir: Path, config_path: Path) -> list[Path]:
-    if not input_path.exists():
-        raise FileNotFoundError(f"Input file not found: {input_path}")
-
     output_dir.mkdir(parents=True, exist_ok=True)
-    source = Image.open(input_path).convert("RGBA")
     config = load_config(config_path)
     bg_config = config.get("background", DEFAULT_BG_CONFIG)
+
+    # If an icon prompt is configured, generate the source icon with AI.
+    icon_config = config.get("icon", {})
+    prompt = icon_config.get("prompt")
+
+    if prompt:
+        from icon_gen import generate_icon
+
+        model = icon_config.get("model", "gpt-image-1")
+        raw_path = output_dir / "generated_raw.png"
+        print(f"Generating icon with AI ({model})...")
+        print(f"  Prompt: {prompt}")
+        source = generate_icon(prompt, model=model, output_path=raw_path)
+        print(f"  Raw icon saved -> {raw_path}")
+    else:
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input file not found: {input_path}")
+        source = Image.open(input_path).convert("RGBA")
 
     written: list[Path] = []
     for asset in ASSETS:

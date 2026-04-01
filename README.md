@@ -6,6 +6,7 @@ Generate Expo/React Native app icon assets from a single source icon with config
 
 ```bash
 python -m pip install pillow
+pip install openai
 ```
 
 ## Usage
@@ -61,8 +62,8 @@ You can override the gradient direction while still using auto-picked colors:
 }
 ```
 
-| Field       | Required | Default            | Description                         |
-| ----------- | -------- | ------------------ | ----------------------------------- |
+| Field       | Required | Default             | Description                         |
+| ----------- | -------- | ------------------- | ----------------------------------- |
 | `direction` | No       | `"to-bottom-right"` | Named direction or angle in degrees |
 
 ### Solid color
