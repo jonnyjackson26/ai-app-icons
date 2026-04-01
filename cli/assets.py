@@ -11,7 +11,7 @@ from background import create_background
 ASSETS = [
     {"name": "splash.png", "size": (1284, 2778), "icon_fraction": 0.33, "has_background": True},
     {"name": "icon.png", "size": (1024, 1024), "icon_fraction": 0.74, "has_background": True},
-    {"name": "adaptive-icon.png", "size": (1024, 1024), "icon_fraction": 0.72, "has_background": False},
+    {"name": "adaptive-icon.png", "size": (1024, 1024), "icon_fraction": 0.72, "has_background": True},
     {"name": "splash-icon.png", "size": (1024, 1024), "icon_fraction": 0.70, "has_background": False},
     {"name": "favicon.png", "size": (48, 48), "icon_fraction": 0.84, "has_background": False},
 ]
