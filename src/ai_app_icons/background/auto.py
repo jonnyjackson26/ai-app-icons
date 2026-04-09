@@ -23,8 +23,8 @@ from collections import Counter
 
 from PIL import Image
 
-from background.color import rgb_to_hex
-from background.gradient import make_gradient
+from .color import rgb_to_hex
+from .gradient import make_gradient
 
 # --- Color-space helpers -------------------------------------------------- #
 

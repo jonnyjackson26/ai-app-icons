@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from background import create_background
+from ai_app_icons.background import create_background
 
 ASSETS = [
     {"name": "splash.png", "size": (1284, 2778), "icon_fraction": 0.33, "has_background": True},

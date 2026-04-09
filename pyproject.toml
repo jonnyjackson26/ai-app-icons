@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-app-icons"
+version = "0.1.0"
+description = "Generate mobile app icon assets using AI"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "Pillow",
+    "openai",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+cli = ["rich"]
+api = ["fastapi", "uvicorn[standard]", "python-multipart"]
+dev = ["pytest", "httpx"]
+
+[project.scripts]
+ai-app-icons = "ai_app_icons.cli.app:main"
+
+[project.urls]
+Repository = "https://github.com/Jonathan/ai-app-icons"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_app_icons"]

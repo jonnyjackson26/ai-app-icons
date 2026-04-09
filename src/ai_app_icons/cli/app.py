@@ -8,10 +8,10 @@ from enum import Enum, auto
 from dotenv import load_dotenv
 from PIL import Image
 
-from cli import ui
-from cli.assets import generate_all_assets
-from cli.session import Session
-from icon_gen import edit_icon, generate_icon
+from ai_app_icons.cli import ui
+from ai_app_icons.assets import generate_all_assets
+from ai_app_icons.session import Session
+from ai_app_icons.icon_gen import edit_icon, generate_icon
 
 load_dotenv()
 

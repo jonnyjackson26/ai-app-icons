@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PIL import Image
 
-from background.color import parse_hex
+from .color import parse_hex
 
 
 def make_solid(size: tuple[int, int], color: str) -> Image.Image:

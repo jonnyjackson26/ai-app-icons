@@ -6,7 +6,7 @@ import math
 
 from PIL import Image, ImageDraw
 
-from background.color import parse_hex
+from .color import parse_hex
 
 NAMED_DIRECTIONS: dict[str, float] = {
     "to-right": 0,

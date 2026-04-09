@@ -12,7 +12,7 @@ from rich.prompt import Confirm, IntPrompt, Prompt
 from rich.table import Table
 from rich.text import Text
 
-from cli.assets import ASSETS
+from ai_app_icons.assets import ASSETS
 
 console = Console()
 

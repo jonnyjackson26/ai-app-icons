@@ -12,10 +12,10 @@ from __future__ import annotations
 
 from PIL import Image
 
-from background.auto import make_auto
-from background.gradient import make_gradient
-from background.image import make_image_bg
-from background.solid import make_solid
+from .auto import make_auto
+from .gradient import make_gradient
+from .image import make_image_bg
+from .solid import make_solid
 
 DEFAULT_BG_CONFIG: dict = {"type": "auto"}
 
