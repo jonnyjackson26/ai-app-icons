@@ -1,23 +1,9 @@
 # Deployment
 
-The recommended setup is two separate deployments:
+We will have two seperate deployments:
+The API on fly.io and the web app on vercel.
 
-| Component   | Hosted on                                                                        | Why                                                              |
-| ----------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| **API**     | [fly.io](https://fly.io)                                                         | Needs a real server (handles OpenAI API calls, image processing) |
-| **Web app** | [Vercel](https://vercel.com) or [Cloudflare Pages](https://pages.cloudflare.com) | Free static hosting with a global CDN                            |
-
-The API is the only part that costs money to host. The web app is just HTML/CSS/JS that calls the API — static hosting is free on Vercel and Cloudflare Pages.
-
----
-
-## Part 1: Deploy the API on fly.io
-
-### What is fly.io?
-
-Fly.io runs your app in lightweight VMs close to your users. It has a free tier (3 shared VMs, 256 MB each) which is enough for this API.
-
-### Prerequisites
+## API on fly
 
 1. Install the Fly CLI:
 
@@ -122,23 +108,6 @@ curl https://ai-app-icons-api.fly.dev/health
 # https://ai-app-icons-api.fly.dev/openapi.json
 ```
 
-### Useful fly.io commands
-
-```bash
-fly status              # check if your app is running
-fly logs                # stream live logs
-fly secrets list        # see which secrets are set (not their values)
-fly scale count 1       # run 1 instance (default)
-fly scale memory 512    # bump RAM if you need it (for image processing)
-fly deploy              # redeploy after code changes
-```
-
-### Cost
-
-Fly.io's free tier includes 3 shared-cpu-1x VMs with 256 MB RAM. This API fits comfortably in one. You won't be charged unless you exceed the free tier or explicitly scale up.
-
----
-
 ## Part 2: Deploy the web app
 
 The web app is a static frontend (HTML/CSS/JS or React) that calls your API. Static sites are free to host.
@@ -164,26 +133,6 @@ Vercel is the easiest option for React/Next.js apps.
 5. Click Deploy
 
 Your site will be live at `https://your-app.vercel.app`. Vercel auto-deploys on every push to `main`.
-
-### Option B: Cloudflare Pages
-
-Cloudflare Pages is similar to Vercel with a generous free tier and great global performance.
-
-1. Push your code to GitHub
-
-2. Go to [dash.cloudflare.com](https://dash.cloudflare.com) → Pages → Create a project
-
-3. Connect your GitHub repo
-
-4. Configure:
-   - **Root directory (path)**: `web`
-   - **Build command**: `npm run build` (or whatever your framework uses)
-   - **Build output directory**: `dist` (Vite) or `build` (Create React App) or `.next` (Next.js)
-   - **Environment variables**: add your API URL
-
-5. Deploy
-
-Your site will be live at `https://your-app.pages.dev`.
 
 ### Environment variable in your frontend code
 

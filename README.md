@@ -48,14 +48,14 @@ The `.` means "install the package from the current directory." The `[cli]` part
 
 This project defines three extras in `pyproject.toml`:
 
-| Command | What it installs | When you need it |
-|---|---|---|
-| `pip install .` | Core only (Pillow, openai, python-dotenv) | Using as a Python library |
-| `pip install ".[cli]"` | Core + `rich` | Running the interactive CLI |
-| `pip install ".[api]"` | Core + `fastapi`, `uvicorn` | Running the REST API server |
-| `pip install ".[cli,api]"` | Core + both | Running everything |
-| `pip install ".[dev]"` | Core + `pytest`, `httpx` | Running tests |
-| `pip install -e ".[cli,api,dev]"` | Everything, editable | Full development setup |
+| Command                           | What it installs                          | When you need it            |
+| --------------------------------- | ----------------------------------------- | --------------------------- |
+| `pip install .`                   | Core only (Pillow, openai, python-dotenv) | Using as a Python library   |
+| `pip install ".[cli]"`            | Core + `rich`                             | Running the interactive CLI |
+| `pip install ".[api]"`            | Core + `fastapi`, `uvicorn`               | Running the REST API server |
+| `pip install ".[cli,api]"`        | Core + both                               | Running everything          |
+| `pip install ".[dev]"`            | Core + `pytest`, `httpx`                  | Running tests               |
+| `pip install -e ".[cli,api,dev]"` | Everything, editable                      | Full development setup      |
 
 The quotes around `".[cli]"` are needed because square brackets have special meaning in most shells. Without quotes, your shell might try to interpret `[cli]` as a glob pattern instead of passing it to pip.
 
@@ -145,14 +145,14 @@ This starts a FastAPI server at `http://localhost:8000`.
 
 Open `http://localhost:8000/docs` for **Swagger UI** — an interactive page where you can try every endpoint directly in your browser. The root URL (`/`) redirects there too.
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/docs` | Swagger UI — interactive API explorer |
-| POST | `/generate` | Generate icon from a text description |
-| POST | `/edit` | Edit an existing icon with an instruction |
-| POST | `/assets` | Generate all 5 asset sizes from an icon |
-| GET | `/backgrounds` | List available background types |
-| GET | `/health` | Health check |
+| Method | Endpoint       | Description                               |
+| ------ | -------------- | ----------------------------------------- |
+| GET    | `/docs`        | Swagger UI — interactive API explorer     |
+| POST   | `/generate`    | Generate icon from a text description     |
+| POST   | `/edit`        | Edit an existing icon with an instruction |
+| POST   | `/assets`      | Generate all 5 asset sizes from an icon   |
+| GET    | `/backgrounds` | List available background types           |
+| GET    | `/health`      | Health check                              |
 
 All image data is transferred as base64-encoded PNGs in JSON.
 
@@ -200,13 +200,13 @@ For deployment, see [docs/deployment.md](docs/deployment.md) — the API goes on
 
 ### Generated assets
 
-| File | Size | Background | Use |
-|---|---|---|---|
-| `splash.png` | 1284x2778 | Configured | Expo splash screen |
-| `icon.png` | 1024x1024 | Configured | App store icon |
-| `adaptive-icon.png` | 1024x1024 | Configured | Android adaptive icon |
-| `splash-icon.png` | 1024x1024 | Transparent | Expo splash icon (no bg) |
-| `favicon.png` | 48x48 | Transparent | Web favicon |
+| File                | Size      | Background  | Use                      |
+| ------------------- | --------- | ----------- | ------------------------ |
+| `splash.png`        | 1284x2778 | Configured  | Expo splash screen       |
+| `icon.png`          | 1024x1024 | Configured  | App store icon           |
+| `adaptive-icon.png` | 1024x1024 | Configured  | Android adaptive icon    |
+| `splash-icon.png`   | 1024x1024 | Transparent | Expo splash icon (no bg) |
+| `favicon.png`       | 48x48     | Transparent | Web favicon              |
 
 ---
 
@@ -237,16 +237,16 @@ Linear gradient with 2+ colors.
 
 #### Named directions
 
-| Direction | Angle | Description |
-|---|---|---|
-| `to-right` | 0 | Left to right |
-| `to-top-right` | 45 | Bottom-left to top-right |
-| `to-top` | 90 | Bottom to top |
-| `to-top-left` | 135 | Bottom-right to top-left |
-| `to-left` | 180 | Right to left |
-| `to-bottom-left` | 225 | Top-right to bottom-left |
-| `to-bottom` | 270 | Top to bottom |
-| `to-bottom-right` | 315 | Top-left to bottom-right |
+| Direction         | Angle | Description              |
+| ----------------- | ----- | ------------------------ |
+| `to-right`        | 0     | Left to right            |
+| `to-top-right`    | 45    | Bottom-left to top-right |
+| `to-top`          | 90    | Bottom to top            |
+| `to-top-left`     | 135   | Bottom-right to top-left |
+| `to-left`         | 180   | Right to left            |
+| `to-bottom-left`  | 225   | Top-right to bottom-left |
+| `to-bottom`       | 270   | Top to bottom            |
+| `to-bottom-right` | 315   | Top-left to bottom-right |
 
 You can also pass a numeric angle (e.g., `45`).
 
@@ -265,3 +265,5 @@ You can also pass a numeric angle (e.g., `45`).
 - [Expo splash screen & app icon docs](https://docs.expo.dev/develop/user-interface/splash-screen-and-app-icon/)
 - [Figma: Expo App Icon / Splash v2](https://www.figma.com/design/xwU1GutPcyGj0X5Q5Eitau/Expo-App-Icon---Splash-v2--Community---Community-?node-id=1-3040&t=JvL2pzQG06cKUhpj-0)
 - https://developer.apple.com/design/human-interface-guidelines/app-icons
+
+Read more about this project on [my website](https://jonny-jackson.com/posts/ai-app-icons/).
