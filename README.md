@@ -74,7 +74,7 @@ ai-app-icons/
   pyproject.toml              # package config — name, version, deps, extras
   chatbot.py                  # backward-compat entry point (python chatbot.py still works)
   src/
-    ai_app_icons/             # the actual Python package
+    ai_app_icons/             # the Python package
       __init__.py             # public API: generate_icon, edit_icon, etc.
       icon_gen.py             # AI icon generation (OpenAI API calls)
       assets.py               # generate all 5 asset sizes with backgrounds
@@ -82,9 +82,18 @@ ai-app-icons/
       background/             # background generators (auto, solid, gradient, image)
       cli/                    # interactive terminal UI (requires `rich`)
       api/                    # REST API (requires `fastapi`)
+  web/                        # Next.js web app (separate from the Python package)
+    src/
+      app/                    # Next.js App Router (layout, page)
+      components/             # Wizard, steps, UI components
+      lib/                    # API client, types, download helpers
+  docs/
+    deployment.md             # how to deploy the API and web app
 ```
 
-Everything under `src/ai_app_icons/` is the package. The `src/` layout is a Python packaging convention — it prevents confusing import bugs during development.
+Everything under `src/ai_app_icons/` is the Python package. The `src/` layout is a Python packaging convention — it prevents confusing import bugs during development.
+
+The `web/` directory is a standalone Next.js app with its own `package.json`. It connects to the Python API over HTTP — the two are deployed separately.
 
 ---
 
@@ -154,6 +163,40 @@ FastAPI auto-generates an OpenAPI spec at `/openapi.json`. When creating a custo
 1. Deploy the API to a public URL
 2. In the GPT builder, go to "Actions" and paste your `/openapi.json` URL
 3. ChatGPT reads the spec and learns how to call your endpoints
+
+### As a web app
+
+The web app is a Next.js frontend that talks to the API. You need both running:
+
+```bash
+# Terminal 1 — start the API
+pip install -e ".[api]"
+uvicorn ai_app_icons.api.main:app --reload
+
+# Terminal 2 — start the web app
+cd web
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`. The web app connects to the API at `http://localhost:8000` by default (configured in `web/.env.local`).
+
+The web app walks you through the same flow as the CLI:
+
+1. **Describe** your icon or upload an existing image
+2. **Review** the generated icon
+3. **Refine** it with follow-up instructions (optional, can loop)
+4. **Choose a background** — auto gradient, solid color, or custom gradient
+5. **Export** all 5 asset sizes — download individually or as a .zip
+
+To point the web app at a different API (e.g., a deployed one):
+
+```bash
+# web/.env.local
+NEXT_PUBLIC_API_URL=https://your-api.fly.dev
+```
+
+For deployment, see [docs/deployment.md](docs/deployment.md) — the API goes on fly.io, the web app goes on Vercel or Cloudflare Pages (free).
 
 ### Generated assets
 
