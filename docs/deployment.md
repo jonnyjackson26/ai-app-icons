@@ -27,40 +27,13 @@ add to path `$env:PATH += ";C:\Users\Jonathan\.fly\bin"`
    fly auth login     # returning user
    ```
 
-### Step 1: Create the Dockerfile
-
-Create a `Dockerfile` in the project root:
-
-```dockerfile
-FROM python:3.12-slim
-
-WORKDIR /app
-
-# Install the package with API extras
-COPY . .
-RUN pip install --no-cache-dir ".[api]"
-
-# Expose the port fly.io expects
-EXPOSE 8080
-
-# Run the API server
-CMD ["uvicorn", "ai_app_icons.api.main:app", "--host", "0.0.0.0", "--port", "8080"]
-```
-
-### Step 2: Launch on fly.io
+### Launch on fly.io
 
 From the project root:
 
 ```bash
 fly launch
 ```
-
-Fly will detect the Dockerfile and ask you a few questions:
-
-- **App name**: pick something like `ai-app-icons-api`
-- **Region**: pick the closest to you (or your users)
-- **Database**: no
-- **Deploy now?**: no (we need to set secrets first)
 
 This creates a `fly.toml` file in your project.
 
@@ -110,29 +83,16 @@ curl https://ai-app-icons-api.fly.dev/health
 
 ## Part 2: Deploy the web app
 
-The web app is a static frontend (HTML/CSS/JS or React) that calls your API. Static sites are free to host.
+### Vercel
 
-### Option A: Vercel
+- **Root directory**: `web`
+- **Framework**: auto-detected (React, Next.js, etc.)
+- **Environment variables**: add `VITE_API_URL` (or `NEXT_PUBLIC_API_URL`) set to your fly.io URL:
+  ```
+  VITE_API_URL=https://ai-app-icons-api.fly.dev
+  ```
 
-Vercel is the easiest option for React/Next.js apps.
-
-1. Push your `web/` directory to GitHub (it can be in the same repo)
-
-2. Go to [vercel.com](https://vercel.com), sign in with GitHub
-
-3. Click "Import Project" and select your repo
-
-4. Configure:
-   - **Root directory**: `web`
-   - **Framework**: auto-detected (React, Next.js, etc.)
-   - **Environment variables**: add `VITE_API_URL` (or `NEXT_PUBLIC_API_URL`) set to your fly.io URL:
-     ```
-     VITE_API_URL=https://ai-app-icons-api.fly.dev
-     ```
-
-5. Click Deploy
-
-Your site will be live at `https://your-app.vercel.app`. Vercel auto-deploys on every push to `main`.
+Your site will be live at `https://your-app.vercel.app`.
 
 ### Environment variable in your frontend code
 
