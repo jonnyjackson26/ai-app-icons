@@ -2,10 +2,10 @@
 
 The recommended setup is two separate deployments:
 
-| Component | Hosted on | Why |
-|---|---|---|
-| **API** | [fly.io](https://fly.io) | Needs a real server (handles OpenAI API calls, image processing) |
-| **Web app** | [Vercel](https://vercel.com) or [Cloudflare Pages](https://pages.cloudflare.com) | Free static hosting with a global CDN |
+| Component   | Hosted on                                                                        | Why                                                              |
+| ----------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **API**     | [fly.io](https://fly.io)                                                         | Needs a real server (handles OpenAI API calls, image processing) |
+| **Web app** | [Vercel](https://vercel.com) or [Cloudflare Pages](https://pages.cloudflare.com) | Free static hosting with a global CDN                            |
 
 The API is the only part that costs money to host. The web app is just HTML/CSS/JS that calls the API — static hosting is free on Vercel and Cloudflare Pages.
 
@@ -31,6 +31,8 @@ Fly.io runs your app in lightweight VMs close to your users. It has a free tier 
    # Linux
    curl -L https://fly.io/install.sh | sh
    ```
+
+add to path `$env:PATH += ";C:\Users\Jonathan\.fly\bin"`
 
 2. Sign up / log in:
 
@@ -189,21 +191,21 @@ Whatever framework you use, reference the API URL from an environment variable s
 
 ```javascript
 // Vite (React, Vue, Svelte)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 // Next.js
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 ```
 
 Then call the API:
 
 ```javascript
 const response = await fetch(`${API_URL}/generate`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ description: 'A friendly robot mascot' }),
-})
-const { image_base64 } = await response.json()
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ description: "A friendly robot mascot" }),
+});
+const { image_base64 } = await response.json();
 ```
 
 ---
@@ -215,6 +217,7 @@ If you want a ChatGPT GPT to call your API:
 1. Deploy the API on fly.io (Part 1 above)
 
 2. Add ChatGPT's domain to your allowed origins:
+
    ```bash
    fly secrets set ALLOWED_ORIGINS=https://your-web-app.vercel.app,https://chat.openai.com
    ```
