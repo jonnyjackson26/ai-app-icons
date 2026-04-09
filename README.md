@@ -132,10 +132,13 @@ pip install -e ".[api]"
 uvicorn ai_app_icons.api.main:app --reload
 ```
 
-This starts a FastAPI server at `http://localhost:8000`. Visit `http://localhost:8000/docs` for interactive API documentation.
+This starts a FastAPI server at `http://localhost:8000`.
+
+Open `http://localhost:8000/docs` for **Swagger UI** — an interactive page where you can try every endpoint directly in your browser. The root URL (`/`) redirects there too.
 
 | Method | Endpoint | Description |
 |---|---|---|
+| GET | `/docs` | Swagger UI — interactive API explorer |
 | POST | `/generate` | Generate icon from a text description |
 | POST | `/edit` | Edit an existing icon with an instruction |
 | POST | `/assets` | Generate all 5 asset sizes from an icon |

@@ -46,6 +46,13 @@ def _base64_to_image(b64: str) -> Image.Image:
 # Endpoints
 # ---------------------------------------------------------------------------
 
+@router.get("/", include_in_schema=False)
+async def root():
+    """Redirect to interactive API docs."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/docs")
+
+
 @router.get("/health", response_model=HealthResponse)
 async def health():
     """Health check endpoint."""
