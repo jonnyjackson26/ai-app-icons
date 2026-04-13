@@ -204,12 +204,14 @@ def show_asset_table(output_dir: Path) -> None:
     table = Table(title="Generated Assets", border_style="bright_cyan", title_style="bold")
     table.add_column("File", style="bold")
     table.add_column("Size", justify="right")
+    table.add_column("Platform", justify="center")
     table.add_column("Background", justify="center")
 
     for asset in ASSETS:
         w, h = asset["size"]
         bg = "[green]yes[/]" if asset["has_background"] else "[dim]transparent[/]"
-        table.add_row(asset["name"], f"{w} x {h}", bg)
+        platform = asset.get("platform", "")
+        table.add_row(asset["name"], f"{w} x {h}", platform, bg)
 
     console.print(table)
     console.print(f"\n  [dim]Saved to:[/] [bold]{output_dir}[/]\n")

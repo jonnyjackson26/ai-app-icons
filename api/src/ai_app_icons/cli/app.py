@@ -147,7 +147,7 @@ def _save_preview(session: Session) -> None:
 def _handle_export(session: Session) -> State:
     """Generate all asset sizes and display the summary."""
     try:
-        ui.run_with_spinner(
+        _written, bg_color = ui.run_with_spinner(
             "Generating all asset sizes...",
             lambda: generate_all_assets(
                 session.current_image,
@@ -157,6 +157,15 @@ def _handle_export(session: Session) -> State:
         )
         ui.show_success("All assets generated!")
         ui.show_asset_table(session.output_dir)
+        ui.show_info(f"Android adaptive background color: {bg_color}")
+        ui.show_info(
+            'Add to your app.json:\n'
+            '  "android": { "adaptiveIcon": {\n'
+            f'    "foregroundImage": "./assets/adaptive-foreground.png",\n'
+            f'    "backgroundColor": "{bg_color}",\n'
+            f'    "monochromeImage": "./assets/adaptive-monochrome.png"\n'
+            '  }}'
+        )
         return State.AGAIN
 
     except Exception as e:

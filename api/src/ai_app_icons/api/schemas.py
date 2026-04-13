@@ -40,7 +40,7 @@ class EditRequest(BaseModel):
 
 
 class AssetsRequest(BaseModel):
-    """Generate all 5 asset sizes from an icon."""
+    """Generate all Expo-compatible asset files from an icon."""
     image_base64: str = Field(
         ...,
         description="Base64-encoded PNG of the source icon",
@@ -88,10 +88,18 @@ class ImageResponse(BaseModel):
 
 
 class AssetsResponse(BaseModel):
-    """Response containing all generated asset files."""
+    """Response containing all generated Expo asset files."""
     assets: list[AssetFile] = Field(
         ...,
         description="List of generated asset files",
+    )
+    background_color: str = Field(
+        ...,
+        description="Resolved hex color for Android adaptiveIcon.backgroundColor",
+    )
+    expo_config: dict = Field(
+        ...,
+        description="Suggested Expo app.json config snippet for these assets",
     )
 
 
@@ -101,6 +109,8 @@ class AssetFile(BaseModel):
     width: int
     height: int
     has_background: bool
+    platform: str = Field(..., description="Target platform: general, ios, android, web")
+    variant: str = Field(..., description="Asset variant: standard, dark, tinted, monochrome")
     image_base64: str = Field(
         ...,
         description="Base64-encoded PNG image",

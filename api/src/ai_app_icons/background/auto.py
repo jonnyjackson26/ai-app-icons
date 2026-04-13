@@ -18,27 +18,17 @@ Algorithm:
 
 from __future__ import annotations
 
-import colorsys
 from collections import Counter
 
 from PIL import Image
 
-from .color import rgb_to_hex
+from .color import rgb_to_hex, rgb_to_hsl, hsl_to_rgb
 from .gradient import make_gradient
 
-# --- Color-space helpers -------------------------------------------------- #
+# --- Aliases for internal use --------------------------------------------- #
 
-
-def _rgb_to_hsl(r: int, g: int, b: int) -> tuple[float, float, float]:
-    """Return (hue 0-360, saturation 0-1, lightness 0-1)."""
-    h, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
-    return h * 360, s, l
-
-
-def _hsl_to_rgb(h: float, s: float, l: float) -> tuple[int, int, int]:
-    """Convert HSL back to 0-255 RGB."""
-    r, g, b = colorsys.hls_to_rgb(h / 360, l, s)
-    return min(255, max(0, int(r * 255))), min(255, max(0, int(g * 255))), min(255, max(0, int(b * 255)))
+_rgb_to_hsl = rgb_to_hsl
+_hsl_to_rgb = hsl_to_rgb
 
 
 def _perceived_brightness(r: int, g: int, b: int) -> float:

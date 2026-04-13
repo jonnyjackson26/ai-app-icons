@@ -99,9 +99,10 @@ async def edit(req: EditRequest):
 
 @router.post("/assets", response_model=AssetsResponse)
 async def assets(req: AssetsRequest):
-    """Generate all 5 asset sizes from an icon.
+    """Generate all Expo-compatible asset files from an icon.
 
-    Returns each asset as a named base64-encoded PNG.
+    Returns each asset as a named base64-encoded PNG, plus the resolved
+    background color and a suggested Expo app.json config snippet.
     """
     try:
         source = _base64_to_image(req.image_base64)
@@ -112,7 +113,7 @@ async def assets(req: AssetsRequest):
 
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
-            await asyncio.to_thread(
+            _written, bg_color = await asyncio.to_thread(
                 generate_all_assets, source, bg_config, Path(tmpdir)
             )
         except Exception as e:
@@ -128,10 +129,36 @@ async def assets(req: AssetsRequest):
                 width=w,
                 height=h,
                 has_background=asset["has_background"],
+                platform=asset["platform"],
+                variant=asset["variant"],
                 image_base64=_image_to_base64(img),
             ))
 
-    return AssetsResponse(assets=asset_files)
+    expo_config = {
+        "expo": {
+            "icon": "./assets/icon.png",
+            "ios": {
+                "icon": {
+                    "light": "./assets/icon-ios.png",
+                    "dark": "./assets/icon-ios-dark.png",
+                    "tinted": "./assets/icon-ios-tinted.png",
+                }
+            },
+            "android": {
+                "adaptiveIcon": {
+                    "foregroundImage": "./assets/adaptive-foreground.png",
+                    "backgroundColor": bg_color,
+                    "monochromeImage": "./assets/adaptive-monochrome.png",
+                }
+            },
+        }
+    }
+
+    return AssetsResponse(
+        assets=asset_files,
+        background_color=bg_color,
+        expo_config=expo_config,
+    )
 
 
 @router.get("/backgrounds", response_model=list[BackgroundTypeInfo])
