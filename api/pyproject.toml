@@ -6,7 +6,6 @@ build-backend = "hatchling.build"
 name = "ai-app-icons"
 version = "0.1.0"
 description = "Generate mobile app icon assets using AI"
-readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = [

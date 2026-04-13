@@ -1,9 +1,14 @@
+# Python
 __pycache__/
 *.egg-info/
 dist/
 build/
-.env
 *.pyc
 .venv/
-web/node_modules/
-web/.next/
+
+# Environment
+.env
+
+# Generated artifacts
+output/
+test_output/

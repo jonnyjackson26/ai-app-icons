@@ -1,4 +1,0 @@
-Pillow
-openai
-python-dotenv
-rich

@@ -1,9 +1,10 @@
 # Deployment
 
-We will have two seperate deployments:
-The API on fly.io and the web app on vercel.
+Two separate deployments: the API on Fly.io, the web app on Vercel.
 
-## API on fly
+## API on Fly.io
+
+### Setup
 
 1. Install the Fly CLI:
 
@@ -18,8 +19,6 @@ The API on fly.io and the web app on vercel.
    curl -L https://fly.io/install.sh | sh
    ```
 
-add to path `$env:PATH += ";C:\Users\Jonathan\.fly\bin"`
-
 2. Sign up / log in:
 
    ```bash
@@ -27,139 +26,74 @@ add to path `$env:PATH += ";C:\Users\Jonathan\.fly\bin"`
    fly auth login     # returning user
    ```
 
-### Launch on fly.io
+### Launch
 
-From the project root:
+From the `api/` directory:
 
 ```bash
+cd api
 fly launch
 ```
 
-This creates a `fly.toml` file in your project.
-
-### Step 3: Set your secrets
-
-Your API needs the OpenAI key, and you should set the allowed origins for CORS so only your web app can call it:
+### Set secrets
 
 ```bash
 fly secrets set OPENAI_API_KEY=sk-your-key-here
 fly secrets set ALLOWED_ORIGINS=https://your-web-app.vercel.app
 ```
 
-These are encrypted environment variables — they never appear in logs, code, or config files.
+Multiple origins: separate with commas.
 
-If you have multiple allowed origins (e.g., your production site + a preview URL), separate them with commas:
-
-```bash
-fly secrets set ALLOWED_ORIGINS=https://your-app.vercel.app,https://preview.your-app.vercel.app
-```
-
-### Step 4: Deploy
+### Deploy
 
 ```bash
+cd api
 fly deploy
 ```
 
-This builds the Docker image, pushes it to Fly, and starts your app. It takes a couple of minutes the first time.
+Your API is live at `https://ai-app-icons.fly.dev`.
 
-When it's done, your API is live at:
+CI/CD is configured in `.github/workflows/fly-deploy.yml` — deploys on push to `main`.
 
-```
-https://ai-app-icons-api.fly.dev
-```
-
-### Step 5: Verify
+### Verify
 
 ```bash
-# Health check
-curl https://ai-app-icons-api.fly.dev/health
-
-# Interactive API docs
-# Open in browser: https://ai-app-icons-api.fly.dev/docs
-
-# OpenAPI spec (for ChatGPT GPT integration)
-# https://ai-app-icons-api.fly.dev/openapi.json
+curl https://ai-app-icons.fly.dev/health
+# Interactive docs: https://ai-app-icons.fly.dev/docs
+# OpenAPI spec: https://ai-app-icons.fly.dev/openapi.json
 ```
 
-## Part 2: Deploy the web app
+## Web app on Vercel
 
-### Vercel
+Connect the repo to Vercel with these settings:
 
 - **Root directory**: `web`
-- **Framework**: auto-detected (React, Next.js, etc.)
-- **Environment variables**: add `VITE_API_URL` (or `NEXT_PUBLIC_API_URL`) set to your fly.io URL:
-  ```
-  VITE_API_URL=https://ai-app-icons-api.fly.dev
-  ```
+- **Framework**: Next.js (auto-detected)
+- **Environment variable**: `NEXT_PUBLIC_API_URL` = `https://ai-app-icons.fly.dev`
 
 Your site will be live at `https://your-app.vercel.app`.
 
-### Environment variable in your frontend code
+## ChatGPT custom GPT integration
 
-Whatever framework you use, reference the API URL from an environment variable so it works in both local development and production:
-
-```javascript
-// Vite (React, Vue, Svelte)
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-// Next.js
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-```
-
-Then call the API:
-
-```javascript
-const response = await fetch(`${API_URL}/generate`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ description: "A friendly robot mascot" }),
-});
-const { image_base64 } = await response.json();
-```
-
----
-
-## Part 3: ChatGPT custom GPT integration
-
-If you want a ChatGPT GPT to call your API:
-
-1. Deploy the API on fly.io (Part 1 above)
-
-2. Add ChatGPT's domain to your allowed origins:
-
+1. Deploy the API (above)
+2. Add ChatGPT's domain to allowed origins:
    ```bash
    fly secrets set ALLOWED_ORIGINS=https://your-web-app.vercel.app,https://chat.openai.com
    ```
-
-3. In the [GPT builder](https://chat.openai.com/gpts/editor):
-   - Go to **Configure** → **Actions** → **Create new action**
-   - Click **Import from URL**
-   - Paste: `https://ai-app-icons-api.fly.dev/openapi.json`
-   - ChatGPT reads the spec and auto-creates actions for each endpoint
-
-4. Test by asking the GPT to generate an icon
-
----
+3. In the [GPT builder](https://chat.openai.com/gpts/editor): Configure > Actions > Create new action > Import from URL > paste `https://ai-app-icons.fly.dev/openapi.json`
 
 ## Local development
 
-Run the API locally during development:
-
 ```bash
+# Terminal 1 — API
+cd api
 pip install -e ".[api]"
 uvicorn ai_app_icons.api.main:app --reload
-```
+# Runs at http://localhost:8000, CORS allows localhost:3000
 
-The `--reload` flag watches for file changes and restarts automatically. The API runs at `http://localhost:8000`.
-
-CORS is pre-configured to allow `localhost:3000` and `localhost:5173` (default ports for React/Vite dev servers).
-
-Run the web app locally (once you build it):
-
-```bash
+# Terminal 2 — web app
 cd web
 npm install
 npm run dev
+# Runs at http://localhost:3000
 ```
-
-Both can run simultaneously — the frontend on port 3000/5173 calls the API on port 8000.
