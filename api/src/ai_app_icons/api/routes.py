@@ -147,6 +147,7 @@ async def assets(req: AssetsRequest):
             "android": {
                 "adaptiveIcon": {
                     "foregroundImage": "./assets/adaptive-foreground.png",
+                    "backgroundImage": "./assets/adaptive-background.png",
                     "backgroundColor": bg_color,
                     "monochromeImage": "./assets/adaptive-monochrome.png",
                 }

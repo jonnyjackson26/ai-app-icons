@@ -20,6 +20,7 @@ ASSETS = [
     {"name": "icon-ios-tinted.png", "size": (1024, 1024), "icon_fraction": 0.74, "has_background": True, "variant": "tinted", "platform": "ios"},
     # --- Android ---
     {"name": "adaptive-foreground.png", "size": (1024, 1024), "icon_fraction": 0.60, "has_background": False, "variant": "standard", "platform": "android"},
+    {"name": "adaptive-background.png", "size": (1024, 1024), "icon_fraction": 1.0, "has_background": True, "variant": "background", "platform": "android"},
     {"name": "adaptive-monochrome.png", "size": (1024, 1024), "icon_fraction": 0.60, "has_background": False, "variant": "monochrome", "platform": "android"},
     # --- Splash ---
     {"name": "splash.png", "size": (1284, 2778), "icon_fraction": 0.33, "has_background": True, "variant": "standard", "platform": "general"},
@@ -176,6 +177,8 @@ def generate_all_assets(
             canvas = _make_ios_dark(size, bg_config, source, asset["icon_fraction"])
         elif variant == "tinted":
             canvas = _make_ios_tinted(size, bg_config, source, asset["icon_fraction"])
+        elif variant == "background":
+            canvas = create_background(size, bg_config, source=source)
         elif variant == "monochrome":
             canvas = Image.new("RGBA", size, (0, 0, 0, 0))
             mono_source = _make_monochrome(source)
