@@ -64,6 +64,12 @@ def _step(state: State, session: Session) -> State:
             session.original_description = f"(uploaded: {path})"
             ui.show_success(f"Loaded icon from {path}")
             return State.REVIEW
+        elif source == "convert":
+            path = ui.prompt_upload_path()
+            session.current_image = Image.open(path).convert("RGBA")
+            session.original_description = f"(convert: {path})"
+            ui.show_success(f"Loaded logo from {path}")
+            return State.BACKGROUND
         else:
             session.original_description = source
             return State.GENERATE

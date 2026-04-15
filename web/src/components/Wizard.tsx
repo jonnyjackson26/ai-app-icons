@@ -29,6 +29,8 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       return { ...state, description: action.description };
     case "UPLOAD_ICON":
       return { ...state, iconBase64: action.iconBase64, step: "review", editMessage: "" };
+    case "UPLOAD_LOGO":
+      return { ...state, iconBase64: action.iconBase64, step: "background", editMessage: "" };
     case "GENERATE_START":
       return { ...state, step: "generating", error: null };
     case "GENERATE_SUCCESS":

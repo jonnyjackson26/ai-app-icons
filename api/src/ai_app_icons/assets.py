@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PIL import Image, ImageEnhance
+from PIL import Image
 
 from ai_app_icons.background import create_background
 from ai_app_icons.background.auto import auto_gradient_colors
-from ai_app_icons.background.color import hsl_to_rgb, parse_hex, rgb_to_hex, rgb_to_hsl
-from ai_app_icons.background.gradient import make_gradient
-from ai_app_icons.background.solid import make_solid
+from ai_app_icons.background.color import parse_hex
+from ai_app_icons.constants import IOS_DARK_BG
 
 ASSETS = [
     # --- General ---
@@ -45,13 +44,16 @@ def _tight_crop_rgba(image: Image.Image, alpha_threshold: int = 10) -> Image.Ima
     return rgba.crop(bbox)
 
 
-def _place_icon_centered(
-    canvas: Image.Image,
+def _crop_and_resize_icon(
+    canvas_size: tuple[int, int],
     icon: Image.Image,
     icon_fraction: float,
-) -> Image.Image:
-    """Place icon centered on an existing canvas."""
-    target_w, target_h = canvas.size
+) -> tuple[Image.Image, tuple[int, int]]:
+    """Tight-crop and resize an icon to fit *icon_fraction* of canvas.
+
+    Returns (resized_icon_rgba, (paste_x, paste_y)).
+    """
+    target_w, target_h = canvas_size
     cropped = _tight_crop_rgba(icon)
     src_w, src_h = cropped.size
 
@@ -61,6 +63,16 @@ def _place_icon_centered(
 
     x = (target_w - resized.width) // 2
     y = (target_h - resized.height) // 2
+    return resized, (x, y)
+
+
+def _place_icon_centered(
+    canvas: Image.Image,
+    icon: Image.Image,
+    icon_fraction: float,
+) -> Image.Image:
+    """Place icon centered on an existing canvas."""
+    resized, (x, y) = _crop_and_resize_icon(canvas.size, icon, icon_fraction)
     canvas.alpha_composite(resized, (x, y))
     return canvas
 
@@ -82,49 +94,38 @@ def _resolve_bg_color(bg_config: dict, source: Image.Image) -> str:
     return "#ffffff"
 
 
-def _make_dark_background(
+def _make_ios_dark(
     size: tuple[int, int],
     bg_config: dict,
     source: Image.Image,
+    icon_fraction: float,
 ) -> Image.Image:
-    """Create a dark variant of the configured background."""
-    bg_type = bg_config.get("type", "auto")
+    """Create iOS dark variant: dark bg with user's background visible through the logo shape."""
+    dark_r, dark_g, dark_b = parse_hex(IOS_DARK_BG)
+    dark_canvas = Image.new("RGBA", size, (dark_r, dark_g, dark_b, 255))
 
-    if bg_type == "image":
-        canvas = create_background(size, bg_config, source=source)
-        return ImageEnhance.Brightness(canvas).enhance(0.2)
+    user_bg = create_background(size, bg_config, source=source)
 
-    # Resolve colors
-    if bg_type == "auto":
-        c1_hex, c2_hex = auto_gradient_colors(source)
-        colors_rgb = [parse_hex(c1_hex), parse_hex(c2_hex)]
-    elif bg_type == "solid":
-        colors_rgb = [parse_hex(bg_config["color"])]
-    elif bg_type == "gradient":
-        colors_rgb = [parse_hex(c) for c in bg_config["colors"]]
-    else:
-        colors_rgb = [(20, 20, 30)]
+    resized_icon, (paste_x, paste_y) = _crop_and_resize_icon(size, source, icon_fraction)
+    icon_alpha = resized_icon.getchannel("A")
 
-    # Darken each color
-    darkened = []
-    for r, g, b in colors_rgb:
-        h, s, l = rgb_to_hsl(r, g, b)
-        l = min(l, 0.12)
-        s = max(0.0, s * 0.7)
-        darkened.append(rgb_to_hex(*hsl_to_rgb(h, s, l)))
+    full_mask = Image.new("L", size, 0)
+    full_mask.paste(icon_alpha, (paste_x, paste_y))
 
-    if len(darkened) == 1:
-        return make_solid(size, darkened[0])
-    direction = bg_config.get("direction", "to-bottom-right")
-    return make_gradient(size, darkened, direction)
+    return Image.composite(user_bg, dark_canvas, full_mask)
 
 
 def _make_tinted(source: Image.Image) -> Image.Image:
-    """Convert icon to grayscale silhouette preserving alpha (iOS tinted icon)."""
+    """Convert icon to white silhouette preserving alpha (iOS tinted icon).
+
+    iOS applies a user-chosen tint color at runtime, so a clean white
+    shape lets the system tint uniformly.
+    """
     rgba = source.convert("RGBA")
-    gray = rgba.convert("L")
     alpha = rgba.getchannel("A")
-    return Image.merge("RGBA", (gray, gray, gray, alpha))
+    white_layer = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
+    white_layer.putalpha(alpha)
+    return white_layer
 
 
 def _make_monochrome(source: Image.Image) -> Image.Image:
@@ -158,8 +159,7 @@ def generate_all_assets(
         variant = asset["variant"]
 
         if variant == "dark":
-            canvas = _make_dark_background(size, bg_config, source)
-            _place_icon_centered(canvas, source, asset["icon_fraction"])
+            canvas = _make_ios_dark(size, bg_config, source, asset["icon_fraction"])
         elif variant == "tinted":
             canvas = Image.new("RGBA", size, (0, 0, 0, 0))
             tinted_source = _make_tinted(source)

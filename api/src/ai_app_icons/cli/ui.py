@@ -48,10 +48,13 @@ def prompt_source() -> str:
     console.print("[bold]How would you like to start?[/]")
     console.print("  [bright_cyan][1][/] Describe an icon to generate")
     console.print("  [bright_cyan][2][/] Upload an existing icon to refine")
+    console.print("  [bright_cyan][3][/] Upload a PNG logo and generate all assets")
     console.print()
 
-    choice = Prompt.ask("[bold]Choose[/]", choices=["1", "2"], show_choices=False)
+    choice = Prompt.ask("[bold]Choose[/]", choices=["1", "2", "3"], show_choices=False)
 
+    if choice == "3":
+        return "convert"
     if choice == "2":
         return "upload"
 

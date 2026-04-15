@@ -84,6 +84,7 @@ export interface WizardState {
 export type WizardAction =
   | { type: "SET_DESCRIPTION"; description: string }
   | { type: "UPLOAD_ICON"; iconBase64: string }
+  | { type: "UPLOAD_LOGO"; iconBase64: string }
   | { type: "GENERATE_START" }
   | { type: "GENERATE_SUCCESS"; iconBase64: string }
   | { type: "GENERATE_ERROR"; error: string }
