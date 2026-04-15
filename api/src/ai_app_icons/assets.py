@@ -17,7 +17,7 @@ ASSETS = [
     # --- iOS ---
     {"name": "icon-ios.png", "size": (1024, 1024), "icon_fraction": 0.74, "has_background": True, "variant": "standard", "platform": "ios"},
     {"name": "icon-ios-dark.png", "size": (1024, 1024), "icon_fraction": 0.74, "has_background": True, "variant": "dark", "platform": "ios"},
-    {"name": "icon-ios-tinted.png", "size": (1024, 1024), "icon_fraction": 0.74, "has_background": False, "variant": "tinted", "platform": "ios"},
+    {"name": "icon-ios-tinted.png", "size": (1024, 1024), "icon_fraction": 0.74, "has_background": True, "variant": "tinted", "platform": "ios"},
     # --- Android ---
     {"name": "adaptive-foreground.png", "size": (1024, 1024), "icon_fraction": 0.60, "has_background": False, "variant": "standard", "platform": "android"},
     {"name": "adaptive-monochrome.png", "size": (1024, 1024), "icon_fraction": 0.60, "has_background": False, "variant": "monochrome", "platform": "android"},
@@ -115,17 +115,31 @@ def _make_ios_dark(
     return Image.composite(user_bg, dark_canvas, full_mask)
 
 
-def _make_tinted(source: Image.Image) -> Image.Image:
-    """Convert icon to white silhouette preserving alpha (iOS tinted icon).
+def _make_ios_tinted(
+    size: tuple[int, int],
+    bg_config: dict,
+    source: Image.Image,
+    icon_fraction: float,
+) -> Image.Image:
+    """Create iOS tinted variant: dark bg with grayscale background visible through the logo shape.
 
-    iOS applies a user-chosen tint color at runtime, so a clean white
-    shape lets the system tint uniformly.
+    The user's background (gradient/solid/image) is converted to grayscale
+    and masked through the logo, giving a monochrome gradient tint with depth.
+    iOS applies a user-chosen tint color over this at runtime.
     """
-    rgba = source.convert("RGBA")
-    alpha = rgba.getchannel("A")
-    white_layer = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
-    white_layer.putalpha(alpha)
-    return white_layer
+    dark_r, dark_g, dark_b = parse_hex(IOS_DARK_BG)
+    dark_canvas = Image.new("RGBA", size, (dark_r, dark_g, dark_b, 255))
+
+    user_bg = create_background(size, bg_config, source=source)
+    gray_bg = user_bg.convert("L").convert("RGBA")
+
+    resized_icon, (paste_x, paste_y) = _crop_and_resize_icon(size, source, icon_fraction)
+    icon_alpha = resized_icon.getchannel("A")
+
+    full_mask = Image.new("L", size, 0)
+    full_mask.paste(icon_alpha, (paste_x, paste_y))
+
+    return Image.composite(gray_bg, dark_canvas, full_mask)
 
 
 def _make_monochrome(source: Image.Image) -> Image.Image:
@@ -161,9 +175,7 @@ def generate_all_assets(
         if variant == "dark":
             canvas = _make_ios_dark(size, bg_config, source, asset["icon_fraction"])
         elif variant == "tinted":
-            canvas = Image.new("RGBA", size, (0, 0, 0, 0))
-            tinted_source = _make_tinted(source)
-            _place_icon_centered(canvas, tinted_source, asset["icon_fraction"])
+            canvas = _make_ios_tinted(size, bg_config, source, asset["icon_fraction"])
         elif variant == "monochrome":
             canvas = Image.new("RGBA", size, (0, 0, 0, 0))
             mono_source = _make_monochrome(source)
