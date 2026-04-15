@@ -53,7 +53,20 @@ fly deploy
 
 Your API is live at `https://ai-app-icons.fly.dev`.
 
-CI/CD is configured in `.github/workflows/fly-deploy.yml` — deploys on push to `main`.
+### CI/CD
+
+Automatic deploys are configured in `.github/workflows/fly-deploy.yml` — deploys on push to `main`.
+
+To set it up, add a `FLY_API_TOKEN` secret to your GitHub repository:
+
+1. Create a deploy token:
+
+   ```bash
+   fly tokens create deploy -a ai-app-icons
+   ```
+
+2. In your GitHub repo, go to **Settings → Secrets and variables → Actions → New repository secret**.
+3. Name: `FLY_API_TOKEN`, Value: the token from step 1.
 
 ### Verify
 
