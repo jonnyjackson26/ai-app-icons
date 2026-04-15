@@ -21,16 +21,24 @@ export function downloadBase64Image(base64: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export async function downloadAllAsZip(assets: AssetFile[]) {
+export async function downloadAllAsZip(
+  assets: AssetFile[],
+  expoConfig: Record<string, unknown>,
+) {
   const zip = new JSZip();
+  const assetsFolder = zip.folder("assets")!;
+
   for (const asset of assets) {
     const binary = atob(asset.image_base64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i);
     }
-    zip.file(asset.name, bytes);
+    assetsFolder.file(asset.name, bytes);
   }
+
+  zip.file("app.json.snippet", JSON.stringify(expoConfig, null, 2));
+
   const blob = await zip.generateAsync({ type: "blob" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

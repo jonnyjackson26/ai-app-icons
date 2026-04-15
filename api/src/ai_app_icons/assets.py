@@ -30,10 +30,16 @@ ASSETS = [
 ]
 
 
-def _tight_crop_rgba(image: Image.Image) -> Image.Image:
-    """Crop to visible content using alpha channel; return original if fully opaque/no bbox."""
+def _tight_crop_rgba(image: Image.Image, alpha_threshold: int = 10) -> Image.Image:
+    """Crop to visible content using alpha channel.
+
+    Pixels with alpha <= *alpha_threshold* are ignored so that stray
+    near-invisible artifacts from AI generators don't skew the bounding box.
+    """
     rgba = image.convert("RGBA")
-    bbox = rgba.getchannel("A").getbbox()
+    alpha = rgba.getchannel("A")
+    mask = alpha.point(lambda p: 255 if p > alpha_threshold else 0)
+    bbox = mask.getbbox()
     if not bbox:
         return rgba
     return rgba.crop(bbox)

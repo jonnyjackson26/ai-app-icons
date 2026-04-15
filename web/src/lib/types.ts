@@ -35,11 +35,15 @@ export interface AssetFile {
   width: number;
   height: number;
   has_background: boolean;
+  platform: "general" | "ios" | "android" | "web";
+  variant: "standard" | "dark" | "tinted" | "monochrome";
   image_base64: string;
 }
 
 export interface AssetsResponse {
   assets: AssetFile[];
+  background_color: string;
+  expo_config: Record<string, unknown>;
 }
 
 export interface BackgroundTypeInfo {
@@ -72,6 +76,8 @@ export interface WizardState {
   editMessage: string;
   backgroundConfig: BackgroundConfig;
   assets: AssetFile[] | null;
+  expoConfig: Record<string, unknown> | null;
+  backgroundColor: string | null;
   error: string | null;
 }
 
@@ -88,7 +94,7 @@ export type WizardAction =
   | { type: "REFINE_ERROR"; error: string }
   | { type: "SET_BACKGROUND"; config: BackgroundConfig }
   | { type: "EXPORT_START" }
-  | { type: "EXPORT_SUCCESS"; assets: AssetFile[] }
+  | { type: "EXPORT_SUCCESS"; assets: AssetFile[]; expoConfig: Record<string, unknown>; backgroundColor: string }
   | { type: "EXPORT_ERROR"; error: string }
   | { type: "START_OVER" }
   | { type: "CLEAR_ERROR" };

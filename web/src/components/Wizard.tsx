@@ -18,6 +18,8 @@ const initialState: WizardState = {
   editMessage: "",
   backgroundConfig: { type: "auto" },
   assets: null,
+  expoConfig: null,
+  backgroundColor: null,
   error: null,
 };
 
@@ -48,7 +50,7 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
     case "EXPORT_START":
       return { ...state, step: "exporting", assets: null };
     case "EXPORT_SUCCESS":
-      return { ...state, assets: action.assets, step: "export" };
+      return { ...state, assets: action.assets, expoConfig: action.expoConfig, backgroundColor: action.backgroundColor, step: "export" };
     case "EXPORT_ERROR":
       return { ...state, step: "background", error: action.error };
     case "START_OVER":
@@ -104,6 +106,8 @@ export default function Wizard() {
             iconBase64={state.iconBase64}
             backgroundConfig={state.backgroundConfig}
             assets={state.assets}
+            expoConfig={state.expoConfig}
+            backgroundColor={state.backgroundColor}
             dispatch={dispatch}
           />
         )}
