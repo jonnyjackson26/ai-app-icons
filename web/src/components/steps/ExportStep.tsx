@@ -81,6 +81,31 @@ export default function ExportStep() {
         Your assets are ready!
       </h2>
 
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <Button onClick={() => expoConfig && downloadAllAsZip(assets, expoConfig)}>
+          Download All (.zip)
+        </Button>
+        <Button variant="ghost" onClick={handleCreateAnother}>
+          Create another icon
+        </Button>
+      </div>
+
+      <div className="rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-4 space-y-3">
+        <p className="text-sm text-zinc-700 dark:text-zinc-200">
+          Using GitHub Copilot, Cursor, Claude Code or another AI tool? You can
+          skip the steps below and let your AI assistant handle them for you.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            /* placeholder */
+          }}
+          className="text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 cursor-pointer"
+        >
+          Get setup instructions for GitHub Copilot, Claude Code...
+        </button>
+      </div>
+
       {grouped.map((group) => (
         <div key={group.platform} className="space-y-3">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
@@ -162,14 +187,6 @@ export default function ExportStep() {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        <Button onClick={() => expoConfig && downloadAllAsZip(assets, expoConfig)}>
-          Download All (.zip)
-        </Button>
-        <Button variant="ghost" onClick={handleCreateAnother}>
-          Create another icon
-        </Button>
-      </div>
     </div>
   );
 }

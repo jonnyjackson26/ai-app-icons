@@ -126,7 +126,7 @@ export default function DescribeStep() {
               : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
           }`}
         >
-          Upload an image
+          Upload an inspo image to refine
         </button>
         <button
           onClick={() => setMode("convert")}
@@ -136,7 +136,7 @@ export default function DescribeStep() {
               : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
           }`}
         >
-          Generate assets from logo
+          I already have an icon &mdash; I want to generate all assets
         </button>
       </div>
 

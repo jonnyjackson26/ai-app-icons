@@ -29,6 +29,33 @@ ASSETS = [
 ]
 
 
+def build_expo_config(bg_color: str) -> dict:
+    """Build the Expo app.json snippet that references the generated assets."""
+    return {
+        "expo": {
+            "icon": "./assets/icon.png",
+            "ios": {
+                "icon": {
+                    "light": "./assets/icon-ios.png",
+                    "dark": "./assets/icon-ios-dark.png",
+                    "tinted": "./assets/icon-ios-tinted.png",
+                }
+            },
+            "android": {
+                "adaptiveIcon": {
+                    "foregroundImage": "./assets/adaptive-foreground.png",
+                    "backgroundImage": "./assets/adaptive-background.png",
+                    "backgroundColor": bg_color,
+                    "monochromeImage": "./assets/adaptive-monochrome.png",
+                }
+            },
+            "web": {
+                "favicon": "./assets/favicon.png",
+            },
+        }
+    }
+
+
 def _tight_crop_rgba(image: Image.Image, alpha_threshold: int = 10) -> Image.Image:
     """Crop to visible content using alpha channel.
 

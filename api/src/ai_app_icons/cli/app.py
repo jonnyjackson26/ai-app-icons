@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from PIL import Image
 
 from ai_app_icons.cli import ui
-from ai_app_icons.assets import generate_all_assets
+from ai_app_icons.assets import build_expo_config, generate_all_assets
 from ai_app_icons.session import Session
 from ai_app_icons.icon_gen import edit_icon, generate_icon
 
@@ -215,14 +215,6 @@ def _generate_all_assets(session: Session) -> None:
         )
         ui.show_success("All assets generated!")
         ui.show_asset_table(session.output_dir)
-        ui.show_info(f"Android adaptive background color: {bg_color}")
-        ui.show_info(
-            'Add to your app.json:\n'
-            '  "android": { "adaptiveIcon": {\n'
-            f'    "foregroundImage": "./assets/adaptive-foreground.png",\n'
-            f'    "backgroundColor": "{bg_color}",\n'
-            f'    "monochromeImage": "./assets/adaptive-monochrome.png"\n'
-            '  }}'
-        )
+        ui.show_expo_config(build_expo_config(bg_color))
     except Exception as e:
         ui.show_error(f"Asset generation failed: {e}")

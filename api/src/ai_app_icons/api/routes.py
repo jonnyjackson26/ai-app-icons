@@ -13,7 +13,7 @@ from openai import APIError
 from PIL import Image
 
 from ai_app_icons import __version__
-from ai_app_icons.assets import ASSETS, generate_all_assets
+from ai_app_icons.assets import ASSETS, build_expo_config, generate_all_assets
 from ai_app_icons.icon_gen import edit_icon, generate_icon
 
 from .schemas import (
@@ -143,26 +143,7 @@ async def assets(req: AssetsRequest):
                 image_base64=_image_to_base64(img),
             ))
 
-    expo_config = {
-        "expo": {
-            "icon": "./assets/icon.png",
-            "ios": {
-                "icon": {
-                    "light": "./assets/icon-ios.png",
-                    "dark": "./assets/icon-ios-dark.png",
-                    "tinted": "./assets/icon-ios-tinted.png",
-                }
-            },
-            "android": {
-                "adaptiveIcon": {
-                    "foregroundImage": "./assets/adaptive-foreground.png",
-                    "backgroundImage": "./assets/adaptive-background.png",
-                    "backgroundColor": bg_color,
-                    "monochromeImage": "./assets/adaptive-monochrome.png",
-                }
-            },
-        }
-    }
+    expo_config = build_expo_config(bg_color)
 
     return AssetsResponse(
         assets=asset_files,
