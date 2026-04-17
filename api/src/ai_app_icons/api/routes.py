@@ -9,6 +9,7 @@ from io import BytesIO
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
+from openai import APIError
 from PIL import Image
 
 from ai_app_icons import __version__
@@ -72,6 +73,8 @@ async def generate(req: GenerateRequest):
         return ImageResponse(image_base64=_image_to_base64(image))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except APIError:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -95,6 +98,8 @@ async def edit(req: EditRequest):
             image_base64=_image_to_base64(image),
             message=message,
         )
+    except APIError:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -118,6 +123,8 @@ async def assets(req: AssetsRequest):
             _written, bg_color = await asyncio.to_thread(
                 generate_all_assets, source, bg_config, Path(tmpdir)
             )
+        except APIError:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 

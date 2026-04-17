@@ -4,9 +4,11 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from openai import APIError
 
 from ai_app_icons import __version__
 
+from .error_handlers import openai_exception_handler
 from .routes import router
 
 
@@ -32,6 +34,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(router)
+    app.add_exception_handler(APIError, openai_exception_handler)
     return app
 
 
