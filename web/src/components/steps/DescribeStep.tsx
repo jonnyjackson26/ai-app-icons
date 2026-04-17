@@ -1,28 +1,64 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
+import Spinner from "@/components/ui/Spinner";
 import { MODES } from "@/lib/generationModes";
-import type { WizardAction } from "@/lib/types";
-
-interface Props {
-  dispatch: React.Dispatch<WizardAction>;
-}
+import { generateIcon } from "@/lib/api";
+import { useWizard } from "@/components/WizardContext";
 
 const SKIP_MODE = "__skip__";
 
-export default function DescribeStep({ dispatch }: Props) {
-  const [mode, setMode] = useState<"describe" | "upload" | "convert">("describe");
-  const [description, setDescription] = useState("");
-  const [styleMode, setStyleMode] = useState<string | null>(null);
-  const [dragging, setDragging] = useState(false);
+export default function DescribeStep() {
+  const router = useRouter();
+  const { data, update } = useWizard();
 
-  const handleGenerate = () => {
-    if (!description.trim() || styleMode === null) return;
-    dispatch({ type: "SET_DESCRIPTION", description: description.trim() });
-    dispatch({ type: "SET_MODE", mode: styleMode === SKIP_MODE ? "" : styleMode });
-    dispatch({ type: "GENERATE_START" });
-  };
+  const [mode, setMode] = useState<"describe" | "upload" | "convert">("describe");
+  const [description, setDescription] = useState(data.description);
+  const [styleMode, setStyleMode] = useState<string | null>(
+    data.mode ? data.mode : null
+  );
+  const [dragging, setDragging] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const requestRef = useRef<{ desc: string; mode: string } | null>(null);
+
+  useEffect(() => {
+    update({ description });
+  }, [description, update]);
+  useEffect(() => {
+    if (styleMode && styleMode !== SKIP_MODE) update({ mode: styleMode });
+    if (styleMode === SKIP_MODE) update({ mode: "" });
+  }, [styleMode, update]);
+
+  useEffect(() => {
+    if (!isGenerating || !requestRef.current) return;
+    const { desc, mode: effectiveMode } = requestRef.current;
+    const ac = new AbortController();
+    generateIcon(desc, effectiveMode, ac.signal)
+      .then((res) => {
+        if (ac.signal.aborted) return;
+        update({ iconBase64: res.image_base64, editMessage: "", error: null });
+        router.push("?step=review");
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError" || ac.signal.aborted) return;
+        update({
+          error: err instanceof Error ? err.message : "Generation failed",
+        });
+        setIsGenerating(false);
+      });
+    return () => ac.abort();
+  }, [isGenerating, router, update]);
+
+  const handleGenerate = useCallback(() => {
+    if (!description.trim() || styleMode === null || isGenerating) return;
+    requestRef.current = {
+      desc: description.trim(),
+      mode: styleMode === SKIP_MODE ? "" : styleMode,
+    };
+    setIsGenerating(true);
+  }, [description, styleMode, isGenerating]);
 
   const handleFile = useCallback(
     (file: File) => {
@@ -30,11 +66,12 @@ export default function DescribeStep({ dispatch }: Props) {
       reader.onload = () => {
         const dataUrl = reader.result as string;
         const base64 = dataUrl.split(",")[1];
-        dispatch({ type: "UPLOAD_ICON", iconBase64: base64 });
+        update({ iconBase64: base64, editMessage: "", error: null });
+        router.push("?step=review");
       };
       reader.readAsDataURL(file);
     },
-    [dispatch]
+    [router, update]
   );
 
   const handleConvertFile = useCallback(
@@ -43,11 +80,12 @@ export default function DescribeStep({ dispatch }: Props) {
       reader.onload = () => {
         const dataUrl = reader.result as string;
         const base64 = dataUrl.split(",")[1];
-        dispatch({ type: "UPLOAD_LOGO", iconBase64: base64 });
+        update({ iconBase64: base64, editMessage: "", error: null });
+        router.push("?step=background");
       };
       reader.readAsDataURL(file);
     },
-    [dispatch]
+    [router, update]
   );
 
   const handleDrop = (e: React.DragEvent) => {
@@ -58,6 +96,10 @@ export default function DescribeStep({ dispatch }: Props) {
       handleFile(file);
     }
   };
+
+  if (isGenerating) {
+    return <Spinner message="Generating your icon..." />;
+  }
 
   return (
     <div className="space-y-6">

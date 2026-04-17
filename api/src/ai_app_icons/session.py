@@ -19,6 +19,7 @@ class Session:
     current_image: Image.Image | None = None
     bg_config: dict = field(default_factory=lambda: {"type": "solid", "color": "#1a1a2e"})
     output_dir: Path = field(default_factory=lambda: Path("output"))
+    last_source: str | None = None  # "describe" | "upload" | "convert" — last chosen path, for back-nav pre-fill
 
     @property
     def has_image(self) -> bool:
@@ -30,3 +31,4 @@ class Session:
         self.mode = DEFAULT_MODE_ID
         self.current_image = None
         self.bg_config = {"type": "solid", "color": "#1a1a2e"}
+        self.last_source = None

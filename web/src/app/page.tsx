@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import Wizard from "@/components/Wizard";
+import { WizardProvider } from "@/components/WizardContext";
 
 export default function Home() {
   return (
@@ -14,7 +16,11 @@ export default function Home() {
         </div>
       </header>
       <main className="flex-1 px-4 py-8">
-        <Wizard />
+        <WizardProvider>
+          <Suspense fallback={null}>
+            <Wizard />
+          </Suspense>
+        </WizardProvider>
       </main>
       <footer className="border-t border-zinc-200 dark:border-zinc-800 px-4 py-4 text-center text-xs text-zinc-400 dark:text-zinc-500">
         Open source &middot; Powered by OpenAI

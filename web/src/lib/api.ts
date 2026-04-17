@@ -22,31 +22,37 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
 export async function generateIcon(
   description: string,
-  mode?: string
+  mode?: string,
+  signal?: AbortSignal
 ): Promise<ImageResponse> {
   return apiFetch<ImageResponse>("/generate", {
     method: "POST",
     body: JSON.stringify(mode ? { description, mode } : { description }),
+    signal,
   });
 }
 
 export async function editIcon(
   imageBase64: string,
-  instruction: string
+  instruction: string,
+  signal?: AbortSignal
 ): Promise<ImageResponse> {
   return apiFetch<ImageResponse>("/edit", {
     method: "POST",
     body: JSON.stringify({ image_base64: imageBase64, instruction }),
+    signal,
   });
 }
 
 export async function generateAssets(
   imageBase64: string,
-  background: BackgroundConfig
+  background: BackgroundConfig,
+  signal?: AbortSignal
 ): Promise<AssetsResponse> {
   return apiFetch<AssetsResponse>("/assets", {
     method: "POST",
     body: JSON.stringify({ image_base64: imageBase64, background }),
+    signal,
   });
 }
 

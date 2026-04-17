@@ -1,9 +1,17 @@
-"""Main conversation loop — state machine driving the chatbot."""
+"""Interactive CLI — nested flow functions driving the chatbot.
+
+The Python call stack is the back stack: `review_flow` calls `background_flow`,
+which calls `export_flow`. Returning from a flow = "back" to the caller.
+Intra-flow back uses `while True` + `continue` so the current menu re-shows.
+
+Two exceptions handle non-local jumps:
+    Restart       — unwind to main() and start fresh (session reset)
+    ExitRequested — terminate the program
+"""
 
 from __future__ import annotations
 
 import os
-from enum import Enum, auto
 
 from dotenv import load_dotenv
 from PIL import Image
@@ -16,16 +24,12 @@ from ai_app_icons.icon_gen import edit_icon, generate_icon
 load_dotenv()
 
 
-class State(Enum):
-    WELCOME = auto()
-    DESCRIBE = auto()
-    GENERATE = auto()
-    REVIEW = auto()
-    REFINE = auto()
-    BACKGROUND = auto()
-    EXPORT = auto()
-    AGAIN = auto()
-    EXIT = auto()
+class Restart(Exception):
+    """User chose to start over — reset session and re-enter describe_flow."""
+
+
+class ExitRequested(Exception):
+    """User chose to exit — terminate the program."""
 
 
 def main() -> None:
@@ -39,76 +43,127 @@ def main() -> None:
         return
 
     session = Session()
-    state = State.WELCOME
-
+    ui.show_welcome()
     try:
-        while state != State.EXIT:
-            state = _step(state, session)
-    except KeyboardInterrupt:
-        ui.show_goodbye()
+        while True:
+            try:
+                describe_flow(session)
+                break  # returned normally = user is done
+            except Restart:
+                session.reset()
+                continue
+    except (ExitRequested, KeyboardInterrupt):
+        pass
+    ui.show_goodbye()
 
 
-def _step(state: State, session: Session) -> State:
-    """Execute one state transition and return the next state."""
+# ---------------------------------------------------------------------------
+# Flows
+# ---------------------------------------------------------------------------
 
-    if state == State.WELCOME:
-        ui.show_welcome()
-        return State.DESCRIBE
+def describe_flow(session: Session) -> None:
+    """Top-level flow: choose a source and seed the session.
 
-    if state == State.DESCRIBE:
-        session.reset()
-        source = ui.prompt_source()
+    Returning = exit. Back from any sub-prompt loops back to the source menu
+    (never returns from here, since there's nowhere above to go).
+    """
+    while True:
+        source = ui.prompt_source(
+            default_source=session.last_source,
+            default_description=session.original_description,
+        )
+
         if source == "upload":
             path = ui.prompt_upload_path()
+            if path is None:
+                continue
             session.current_image = Image.open(path).convert("RGBA")
             session.original_description = f"(uploaded: {path})"
+            session.last_source = "upload"
             ui.show_success(f"Loaded icon from {path}")
-            return State.REVIEW
-        elif source == "convert":
+            review_flow(session)
+            continue
+
+        if source == "convert":
             path = ui.prompt_upload_path()
+            if path is None:
+                continue
             session.current_image = Image.open(path).convert("RGBA")
             session.original_description = f"(convert: {path})"
+            session.last_source = "convert"
             ui.show_success(f"Loaded logo from {path}")
-            return State.BACKGROUND
-        else:
-            session.original_description = source
-            session.mode = ui.prompt_mode()
-            return State.GENERATE
+            background_flow(session)
+            continue
 
-    if state == State.GENERATE:
-        return _handle_generate(session)
+        # describe path
+        session.original_description = source
+        session.last_source = "describe"
+        mode = ui.prompt_mode(default=session.mode)
+        if mode is None:
+            continue
+        session.mode = mode
+        if not _generate(session):
+            continue
+        review_flow(session)
+        continue
 
-    if state == State.REVIEW:
+
+def review_flow(session: Session) -> None:
+    """Post-generation menu. Returning = back to describe_flow."""
+    while True:
         action = ui.prompt_action()
+        if action == "back":
+            return
         if action == "accept":
-            return State.BACKGROUND
+            background_flow(session)
+            continue
         if action == "refine":
-            return State.REFINE
+            refine_flow(session)
+            continue
         if action == "restart":
-            return State.DESCRIBE
-        return State.EXIT
-
-    if state == State.REFINE:
-        refinement = ui.prompt_refinement()
-        return _handle_refine(session, refinement)
-
-    if state == State.BACKGROUND:
-        session.bg_config = ui.prompt_background()
-        return State.EXPORT
-
-    if state == State.EXPORT:
-        return _handle_export(session)
-
-    if state == State.AGAIN:
-        if ui.prompt_again():
-            return State.DESCRIBE
-        return State.EXIT
-
-    return State.EXIT
+            raise Restart()
+        if action == "exit":
+            raise ExitRequested()
 
 
-def _handle_generate(session: Session) -> State:
-    """Generate a brand-new icon from the description."""
+def refine_flow(session: Session) -> None:
+    """Iteratively edit the current icon. Returning = back to review."""
+    while True:
+        instruction = ui.prompt_refinement()
+        if instruction is None:
+            return
+        _refine(session, instruction)
+
+
+def background_flow(session: Session) -> None:
+    """Pick a background and run export. Returns after export unwinds."""
+    config = ui.prompt_background(current=session.bg_config)
+    if config is None:
+        return
+    session.bg_config = config
+    export_flow(session)
+
+
+def export_flow(session: Session) -> None:
+    """Generate all assets, then ask if the user wants to start over.
+
+    Raises ``Restart`` if yes, ``ExitRequested`` if no. Never returns
+    normally — after a successful export the user must make a choice, and
+    both choices are non-local jumps (back through normal return would just
+    land on the review menu, which isn't what "no, I'm done" means).
+    """
+    _generate_all_assets(session)
+    if ui.prompt_again():
+        raise Restart()
+    raise ExitRequested()
+
+
+# ---------------------------------------------------------------------------
+# Side-effect helpers (formerly _handle_* in the old state machine)
+# ---------------------------------------------------------------------------
+
+def _generate(session: Session) -> bool:
+    """Generate a brand-new icon from the description. Returns success."""
     try:
         image = ui.run_with_spinner(
             "Generating your icon...",
@@ -116,15 +171,14 @@ def _handle_generate(session: Session) -> State:
         )
         session.current_image = image
         _save_preview(session)
-        return State.REVIEW
-
+        return True
     except Exception as e:
         ui.show_error(f"Generation failed: {e}")
         ui.show_info("Let's try again.")
-        return State.DESCRIBE
+        return False
 
 
-def _handle_refine(session: Session, instruction: str) -> State:
+def _refine(session: Session, instruction: str) -> None:
     """Edit the current icon based on the user's instruction."""
     try:
         image, message = ui.run_with_spinner(
@@ -135,12 +189,9 @@ def _handle_refine(session: Session, instruction: str) -> State:
         if message.strip():
             ui.show_info(message)
         _save_preview(session)
-        return State.REVIEW
-
     except Exception as e:
         ui.show_error(f"Edit failed: {e}")
         ui.show_info("The icon was not changed. Try a different instruction.")
-        return State.REVIEW
 
 
 def _save_preview(session: Session) -> None:
@@ -151,7 +202,7 @@ def _save_preview(session: Session) -> None:
     ui.show_success(f"Icon generated! Preview saved: {preview_path}")
 
 
-def _handle_export(session: Session) -> State:
+def _generate_all_assets(session: Session) -> None:
     """Generate all asset sizes and display the summary."""
     try:
         _written, bg_color = ui.run_with_spinner(
@@ -173,8 +224,5 @@ def _handle_export(session: Session) -> State:
             f'    "monochromeImage": "./assets/adaptive-monochrome.png"\n'
             '  }}'
         )
-        return State.AGAIN
-
     except Exception as e:
         ui.show_error(f"Asset generation failed: {e}")
-        return State.AGAIN

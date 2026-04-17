@@ -1,15 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import BackgroundPreview from "@/components/BackgroundPreview";
 import { PRESETS } from "@/lib/backgroundPresets";
-import type { BackgroundConfig, WizardAction } from "@/lib/types";
-
-interface Props {
-  iconBase64: string;
-  dispatch: React.Dispatch<WizardAction>;
-}
+import { useWizard } from "@/components/WizardContext";
+import type { BackgroundConfig } from "@/lib/types";
 
 type BgType = "preset" | "solid" | "gradient";
 
@@ -28,12 +25,60 @@ function presetGradientCss(colors: string[]): string {
   return `linear-gradient(135deg, ${colors.join(", ")})`;
 }
 
-export default function BackgroundStep({ iconBase64, dispatch }: Props) {
-  const [bgType, setBgType] = useState<BgType>("preset");
-  const [presetId, setPresetId] = useState(PRESETS[0].id);
-  const [solidColor, setSolidColor] = useState("#1a1a2e");
-  const [gradColors, setGradColors] = useState(["#0f0c29", "#302b63"]);
-  const [direction, setDirection] = useState("to-bottom-right");
+// Derive UI state from a persisted BackgroundConfig so back-nav keeps the user's choices.
+function seedFromConfig(cfg: BackgroundConfig): {
+  bgType: BgType;
+  presetId: string;
+  solidColor: string;
+  gradColors: string[];
+  direction: string;
+} {
+  if (cfg.type === "solid") {
+    return {
+      bgType: "solid",
+      presetId: PRESETS[0].id,
+      solidColor: cfg.color ?? "#1a1a2e",
+      gradColors: ["#0f0c29", "#302b63"],
+      direction: "to-bottom-right",
+    };
+  }
+  // gradient — check if it matches a preset
+  const colors = cfg.colors ?? PRESETS[0].colors;
+  const direction = cfg.direction ?? PRESETS[0].direction;
+  const matchedPreset = PRESETS.find(
+    (p) =>
+      p.colors.length === colors.length &&
+      p.colors.every((c, i) => c.toLowerCase() === colors[i].toLowerCase()) &&
+      p.direction === direction
+  );
+  if (matchedPreset) {
+    return {
+      bgType: "preset",
+      presetId: matchedPreset.id,
+      solidColor: "#1a1a2e",
+      gradColors: ["#0f0c29", "#302b63"],
+      direction: "to-bottom-right",
+    };
+  }
+  return {
+    bgType: "gradient",
+    presetId: PRESETS[0].id,
+    solidColor: "#1a1a2e",
+    gradColors: colors,
+    direction,
+  };
+}
+
+export default function BackgroundStep() {
+  const router = useRouter();
+  const { data, update } = useWizard();
+  const iconBase64 = data.iconBase64!;
+
+  const [bgType, setBgType] = useState<BgType>(() => seedFromConfig(data.backgroundConfig).bgType);
+  const [presetId, setPresetId] = useState(() => seedFromConfig(data.backgroundConfig).presetId);
+  const [solidColor, setSolidColor] = useState(() => seedFromConfig(data.backgroundConfig).solidColor);
+  const [gradColors, setGradColors] = useState(() => seedFromConfig(data.backgroundConfig).gradColors);
+  const [direction, setDirection] = useState(() => seedFromConfig(data.backgroundConfig).direction);
 
   const config: BackgroundConfig = useMemo(() => {
     if (bgType === "preset") {
@@ -44,9 +89,13 @@ export default function BackgroundStep({ iconBase64, dispatch }: Props) {
     return { type: "gradient", colors: gradColors, direction };
   }, [bgType, presetId, solidColor, gradColors, direction]);
 
+  useEffect(() => {
+    update({ backgroundConfig: config });
+  }, [config, update]);
+
   const handleGenerate = () => {
-    dispatch({ type: "SET_BACKGROUND", config });
-    dispatch({ type: "EXPORT_START" });
+    update({ backgroundConfig: config, assets: null });
+    router.push("?step=export");
   };
 
   return (

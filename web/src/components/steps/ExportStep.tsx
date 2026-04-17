@@ -1,20 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import { generateAssets } from "@/lib/api";
 import { downloadAllAsZip, downloadBase64Image } from "@/lib/download";
-import type { AssetFile, BackgroundConfig, WizardAction } from "@/lib/types";
-
-interface Props {
-  iconBase64: string;
-  backgroundConfig: BackgroundConfig;
-  assets: AssetFile[] | null;
-  expoConfig: Record<string, unknown> | null;
-  backgroundColor: string | null;
-  dispatch: React.Dispatch<WizardAction>;
-}
+import { useWizard } from "@/components/WizardContext";
 
 const PLATFORM_ORDER = ["general", "ios", "android", "web"] as const;
 const PLATFORM_LABELS: Record<string, string> = {
@@ -30,43 +22,40 @@ const VARIANT_LABELS: Record<string, { label: string; color: string }> = {
   monochrome: { label: "Mono", color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200" },
 };
 
-export default function ExportStep({
-  iconBase64,
-  backgroundConfig,
-  assets,
-  expoConfig,
-  dispatch,
-}: Props) {
-  const [loading, setLoading] = useState(!assets);
+export default function ExportStep() {
+  const router = useRouter();
+  const { data, update, reset } = useWizard();
+  const iconBase64 = data.iconBase64!;
+  const { assets, expoConfig, backgroundConfig } = data;
+
   const [configCopied, setConfigCopied] = useState(false);
 
   useEffect(() => {
     if (assets) return;
-
-    generateAssets(iconBase64, backgroundConfig)
+    const ac = new AbortController();
+    generateAssets(iconBase64, backgroundConfig, ac.signal)
       .then((res) => {
-        dispatch({
-          type: "EXPORT_SUCCESS",
+        if (ac.signal.aborted) return;
+        update({
           assets: res.assets,
           expoConfig: res.expo_config,
           backgroundColor: res.background_color,
+          error: null,
         });
-        setLoading(false);
       })
       .catch((err) => {
-        dispatch({
-          type: "EXPORT_ERROR",
+        if (err?.name === "AbortError" || ac.signal.aborted) return;
+        update({
           error: err instanceof Error ? err.message : "Asset generation failed",
         });
-        setLoading(false);
+        router.push("?step=background");
       });
-  }, [iconBase64, backgroundConfig, assets, dispatch]);
+    return () => ac.abort();
+  }, [assets, iconBase64, backgroundConfig, router, update]);
 
-  if (loading) {
+  if (!assets) {
     return <Spinner message="Generating all asset sizes..." />;
   }
-
-  if (!assets) return null;
 
   const grouped = PLATFORM_ORDER.map((platform) => ({
     platform,
@@ -79,6 +68,11 @@ export default function ExportStep({
     navigator.clipboard.writeText(JSON.stringify(expoConfig, null, 2));
     setConfigCopied(true);
     setTimeout(() => setConfigCopied(false), 2000);
+  };
+
+  const handleCreateAnother = () => {
+    reset();
+    router.push("?step=describe");
   };
 
   return (
@@ -172,10 +166,7 @@ export default function ExportStep({
         <Button onClick={() => expoConfig && downloadAllAsZip(assets, expoConfig)}>
           Download All (.zip)
         </Button>
-        <Button
-          variant="ghost"
-          onClick={() => dispatch({ type: "START_OVER" })}
-        >
+        <Button variant="ghost" onClick={handleCreateAnother}>
           Create another icon
         </Button>
       </div>
