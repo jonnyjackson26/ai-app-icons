@@ -13,6 +13,7 @@ from rich.table import Table
 from rich.text import Text
 
 from ai_app_icons.assets import ASSETS
+from ai_app_icons.modes import DEFAULT_MODE_ID, MODES
 
 console = Console()
 
@@ -63,6 +64,30 @@ def prompt_source() -> str:
         if text.strip():
             return text.strip()
         console.print("[dim]Please enter a description.[/]")
+
+
+def prompt_mode() -> str:
+    """Ask the user to pick a generation style mode. Returns the mode id."""
+    mode_ids = list(MODES.keys())
+    console.print()
+    console.print("[bold]Pick a style:[/]")
+    for idx, mid in enumerate(mode_ids, start=1):
+        mode = MODES[mid]
+        default_tag = " [dim](default)[/]" if mid == DEFAULT_MODE_ID else ""
+        console.print(
+            f"  [bright_cyan][{idx}][/] [bold]{mode.name}[/]{default_tag} "
+            f"— [dim]{mode.description}[/]"
+        )
+    console.print()
+
+    default_choice = str(mode_ids.index(DEFAULT_MODE_ID) + 1)
+    choice = Prompt.ask(
+        "[bold]Choose[/]",
+        choices=[str(i) for i in range(1, len(mode_ids) + 1)],
+        default=default_choice,
+        show_choices=False,
+    )
+    return mode_ids[int(choice) - 1]
 
 
 def prompt_upload_path() -> Path:

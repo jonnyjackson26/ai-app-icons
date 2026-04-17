@@ -7,14 +7,15 @@ import type { WizardAction } from "@/lib/types";
 
 interface Props {
   description: string;
+  mode: string;
   dispatch: React.Dispatch<WizardAction>;
 }
 
-export default function GeneratingStep({ description, dispatch }: Props) {
+export default function GeneratingStep({ description, mode, dispatch }: Props) {
   useEffect(() => {
     let cancelled = false;
 
-    generateIcon(description)
+    generateIcon(description, mode)
       .then((res) => {
         if (!cancelled) {
           dispatch({ type: "GENERATE_SUCCESS", iconBase64: res.image_base64 });
@@ -32,7 +33,7 @@ export default function GeneratingStep({ description, dispatch }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [description, dispatch]);
+  }, [description, mode, dispatch]);
 
   return <Spinner message="Generating your icon..." />;
 }

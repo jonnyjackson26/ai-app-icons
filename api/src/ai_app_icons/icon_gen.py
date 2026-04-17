@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from PIL import Image
 
+from ai_app_icons.modes import get_mode
+
 load_dotenv()
 
 # --- Prompt templates ---------------------------------------------------------
@@ -20,16 +22,13 @@ Create a mobile app icon for the following app:
 {description}
 
 Design requirements — follow every point:
-1. A single, centered graphic element on a TRANSPARENT background.
-2. Clean, modern flat-design style (think iOS / Material You app icons).
-3. Bold, simple geometric shapes with a clear silhouette.
-4. Must be clearly recognizable when displayed at 48 x 48 pixels.
-5. Absolutely NO text, letters, numbers, or written words anywhere.
-6. NO rounded-rectangle border, phone frame, or device mockup.
-7. Vibrant yet professional color palette with strong contrast.
-8. The symbol should intuitively represent the app's core purpose.
-9. Use at most 3-4 colors to keep the design cohesive.
-10. Generous padding around the symbol (leave ~15% margin on each side).
+- A single, centered graphic element on a TRANSPARENT background.
+{style_block}
+- Must be clearly recognizable when displayed at 48 x 48 pixels.
+- Absolutely NO text, letters, numbers, or written words anywhere.
+- NO rounded-rectangle border, phone frame, or device mockup.
+- The symbol should intuitively represent the app's core purpose.
+- Generous padding around the symbol (leave ~15% margin on each side).
 """
 
 _EDIT_PROMPT_TEMPLATE = """\
@@ -41,9 +40,17 @@ mentioned. The background must remain transparent. No text or letters. \
 No rounded-rectangle border."""
 
 
-def build_icon_prompt(description: str) -> str:
-    """Wrap a plain-language app description into an optimised icon-gen prompt."""
-    return _ICON_PROMPT_TEMPLATE.format(description=description.strip())
+def build_icon_prompt(description: str, mode_id: str | None = None) -> str:
+    """Wrap a plain-language app description into an optimised icon-gen prompt.
+
+    ``mode_id`` selects a visual style from :mod:`ai_app_icons.modes`.
+    Passing ``None`` uses the default mode (flat).
+    """
+    mode = get_mode(mode_id)
+    return _ICON_PROMPT_TEMPLATE.format(
+        description=description.strip(),
+        style_block=mode.style_block,
+    )
 
 
 def _build_edit_prompt(instruction: str) -> str:
@@ -78,10 +85,14 @@ def generate_icon(
     model: str = "gpt-image-1",
     size: str = "1024x1024",
     output_path: Path | None = None,
+    mode: str | None = None,
 ) -> Image.Image:
-    """Generate a new app icon from a text description. Returns PIL Image (RGBA)."""
+    """Generate a new app icon from a text description. Returns PIL Image (RGBA).
+
+    ``mode`` selects a visual style (see :mod:`ai_app_icons.modes`).
+    """
     client = _get_client()
-    prompt = build_icon_prompt(description)
+    prompt = build_icon_prompt(description, mode)
 
     result = client.images.generate(
         model=model,

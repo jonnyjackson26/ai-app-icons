@@ -72,6 +72,7 @@ def _step(state: State, session: Session) -> State:
             return State.BACKGROUND
         else:
             session.original_description = source
+            session.mode = ui.prompt_mode()
             return State.GENERATE
 
     if state == State.GENERATE:
@@ -111,7 +112,7 @@ def _handle_generate(session: Session) -> State:
     try:
         image = ui.run_with_spinner(
             "Generating your icon...",
-            lambda: generate_icon(session.original_description),
+            lambda: generate_icon(session.original_description, mode=session.mode),
         )
         session.current_image = image
         _save_preview(session)

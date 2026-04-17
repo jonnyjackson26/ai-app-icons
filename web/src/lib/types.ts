@@ -3,6 +3,7 @@
 export interface GenerateRequest {
   description: string;
   size?: string;
+  mode?: string;
 }
 
 export interface EditRequest {
@@ -72,6 +73,7 @@ export type WizardStep =
 export interface WizardState {
   step: WizardStep;
   description: string;
+  mode: string;
   iconBase64: string | null;
   editMessage: string;
   backgroundConfig: BackgroundConfig;
@@ -83,6 +85,7 @@ export interface WizardState {
 
 export type WizardAction =
   | { type: "SET_DESCRIPTION"; description: string }
+  | { type: "SET_MODE"; mode: string }
   | { type: "UPLOAD_ICON"; iconBase64: string }
   | { type: "UPLOAD_LOGO"; iconBase64: string }
   | { type: "GENERATE_START" }

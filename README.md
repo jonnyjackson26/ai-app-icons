@@ -57,13 +57,13 @@ uvicorn ai_app_icons.api.main:app --reload
 
 API runs at `http://localhost:8000`. Open `/docs` for Swagger UI.
 
-| Method | Endpoint       | Description                               |
-| ------ | -------------- | ----------------------------------------- |
-| POST   | `/generate`    | Generate icon from a text description     |
-| POST   | `/edit`        | Edit an existing icon with an instruction |
-| POST   | `/assets`      | Generate all 5 asset sizes from an icon   |
-| GET    | `/backgrounds` | List available background types           |
-| GET    | `/health`      | Health check                              |
+| Method | Endpoint       | Description                                                    |
+| ------ | -------------- | -------------------------------------------------------------- |
+| POST   | `/generate`    | Generate icon from a text description (optional `mode` field)  |
+| POST   | `/edit`        | Edit an existing icon with an instruction                      |
+| POST   | `/assets`      | Generate all 5 asset sizes from an icon                        |
+| GET    | `/backgrounds` | List available background types                                |
+| GET    | `/health`      | Health check                                                   |
 
 ### Python library
 
@@ -94,6 +94,26 @@ cd web && npm install && npm run dev
 ```
 
 Open `http://localhost:3000`. To point at a deployed API, set `NEXT_PUBLIC_API_URL` in `web/.env.local`.
+
+## Style modes
+
+When generating an icon, you can pick a visual style. The CLI asks after you enter your description; the web app shows a grid below the prompt textarea; the REST API takes an optional `mode` field on `POST /generate`.
+
+| id                 | Style            | Vibe                                                     |
+| ------------------ | ---------------- | -------------------------------------------------------- |
+| `flat` *(default)* | Flat             | Bold geometric shapes, solid colors, no shadows.         |
+| `ios-liquid-glass` | iOS Liquid Glass | Glossy translucent material with soft refraction.        |
+| `skeuomorphic`     | Skeuomorphic     | Realistic textures, lighting, and materials.             |
+| `minimal`          | Minimal          | Single clean symbol, monochrome, lots of whitespace.     |
+| `illustrative`     | Illustrative     | Warm hand-drawn look with organic shapes.                |
+| `3d`               | 3D               | Rendered 3D object with soft lighting and depth.         |
+
+Mode definitions live in two places:
+
+- [`api/src/ai_app_icons/modes.py`](api/src/ai_app_icons/modes.py) — **source of truth**, including the style prompt text that gets injected into the icon-generation prompt.
+- [`web/src/lib/generationModes.ts`](web/src/lib/generationModes.ts) — display metadata only (id, name, description) for the web UI, following the same pattern as `backgroundPresets.ts`.
+
+If you add, rename, or remove a mode, update **both** files. The id strings must match exactly.
 
 ## Generated assets
 

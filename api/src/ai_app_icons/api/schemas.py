@@ -20,6 +20,11 @@ class GenerateRequest(BaseModel):
         default="1024x1024",
         description="Image dimensions",
     )
+    mode: str | None = Field(
+        default=None,
+        description="Style mode id (e.g. 'flat', 'ios-liquid-glass', 'skeuomorphic', 'minimal', 'illustrative', '3d'). Defaults to 'flat'.",
+        examples=["flat"],
+    )
 
 
 class EditRequest(BaseModel):

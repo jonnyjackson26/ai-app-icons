@@ -21,11 +21,12 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export async function generateIcon(
-  description: string
+  description: string,
+  mode?: string
 ): Promise<ImageResponse> {
   return apiFetch<ImageResponse>("/generate", {
     method: "POST",
-    body: JSON.stringify({ description }),
+    body: JSON.stringify(mode ? { description, mode } : { description }),
   });
 }
 

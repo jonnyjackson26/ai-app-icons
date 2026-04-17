@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import Button from "@/components/ui/Button";
+import { DEFAULT_MODE_ID, MODES } from "@/lib/generationModes";
 import type { WizardAction } from "@/lib/types";
 
 interface Props {
@@ -11,11 +12,13 @@ interface Props {
 export default function DescribeStep({ dispatch }: Props) {
   const [mode, setMode] = useState<"describe" | "upload" | "convert">("describe");
   const [description, setDescription] = useState("");
+  const [styleMode, setStyleMode] = useState<string>(DEFAULT_MODE_ID);
   const [dragging, setDragging] = useState(false);
 
   const handleGenerate = () => {
     if (!description.trim()) return;
     dispatch({ type: "SET_DESCRIPTION", description: description.trim() });
+    dispatch({ type: "SET_MODE", mode: styleMode });
     dispatch({ type: "GENERATE_START" });
   };
 
@@ -108,6 +111,33 @@ export default function DescribeStep({ dispatch }: Props) {
               }
             }}
           />
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Style
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {MODES.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setStyleMode(m.id)}
+                  className={`rounded-lg border-2 p-3 text-left transition-colors cursor-pointer ${
+                    styleMode === m.id
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
+                      : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
+                  }`}
+                >
+                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    {m.name}
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    {m.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <Button
             onClick={handleGenerate}
             disabled={!description.trim()}

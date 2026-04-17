@@ -67,9 +67,11 @@ async def generate(req: GenerateRequest):
     """
     try:
         image = await asyncio.to_thread(
-            generate_icon, req.description, size=req.size
+            generate_icon, req.description, size=req.size, mode=req.mode
         )
         return ImageResponse(image_base64=_image_to_base64(image))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

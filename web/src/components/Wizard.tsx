@@ -10,11 +10,13 @@ import RefineStep from "@/components/steps/RefineStep";
 import BackgroundStep from "@/components/steps/BackgroundStep";
 import ExportStep from "@/components/steps/ExportStep";
 import { PRESETS } from "@/lib/backgroundPresets";
+import { DEFAULT_MODE_ID } from "@/lib/generationModes";
 import type { WizardState, WizardAction } from "@/lib/types";
 
 const initialState: WizardState = {
   step: "describe",
   description: "",
+  mode: DEFAULT_MODE_ID,
   iconBase64: null,
   editMessage: "",
   backgroundConfig: {
@@ -32,6 +34,8 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
     case "SET_DESCRIPTION":
       return { ...state, description: action.description };
+    case "SET_MODE":
+      return { ...state, mode: action.mode };
     case "UPLOAD_ICON":
       return { ...state, iconBase64: action.iconBase64, step: "review", editMessage: "" };
     case "UPLOAD_LOGO":
@@ -88,7 +92,11 @@ export default function Wizard() {
       {state.step === "describe" && <DescribeStep dispatch={dispatch} />}
 
       {state.step === "generating" && (
-        <GeneratingStep description={state.description} dispatch={dispatch} />
+        <GeneratingStep
+          description={state.description}
+          mode={state.mode}
+          dispatch={dispatch}
+        />
       )}
 
       {state.step === "review" && state.iconBase64 && (
