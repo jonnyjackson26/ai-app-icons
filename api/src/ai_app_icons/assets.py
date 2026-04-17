@@ -7,7 +7,6 @@ from pathlib import Path
 from PIL import Image
 
 from ai_app_icons.background import create_background
-from ai_app_icons.background.auto import auto_gradient_colors
 from ai_app_icons.background.color import parse_hex
 from ai_app_icons.constants import IOS_DARK_BG
 
@@ -81,17 +80,13 @@ def _place_icon_centered(
 # --- Variant helpers ----------------------------------------------------------
 
 
-def _resolve_bg_color(bg_config: dict, source: Image.Image) -> str:
+def _resolve_bg_color(bg_config: dict) -> str:
     """Return a single #rrggbb hex string for the primary background color."""
-    bg_type = bg_config.get("type", "auto")
+    bg_type = bg_config.get("type")
     if bg_type == "solid":
         return bg_config["color"]
     if bg_type == "gradient":
         return bg_config["colors"][0]
-    if bg_type == "auto":
-        c1, _c2 = auto_gradient_colors(source)
-        return c1
-    # image or unknown — fallback
     return "#ffffff"
 
 
@@ -105,7 +100,7 @@ def _make_ios_dark(
     dark_r, dark_g, dark_b = parse_hex(IOS_DARK_BG)
     dark_canvas = Image.new("RGBA", size, (dark_r, dark_g, dark_b, 255))
 
-    user_bg = create_background(size, bg_config, source=source)
+    user_bg = create_background(size, bg_config)
 
     resized_icon, (paste_x, paste_y) = _crop_and_resize_icon(size, source, icon_fraction)
     icon_alpha = resized_icon.getchannel("A")
@@ -131,7 +126,7 @@ def _make_ios_tinted(
     dark_r, dark_g, dark_b = parse_hex(IOS_DARK_BG)
     dark_canvas = Image.new("RGBA", size, (dark_r, dark_g, dark_b, 255))
 
-    user_bg = create_background(size, bg_config, source=source)
+    user_bg = create_background(size, bg_config)
     gray_bg = user_bg.convert("L").convert("RGBA")
 
     resized_icon, (paste_x, paste_y) = _crop_and_resize_icon(size, source, icon_fraction)
@@ -167,7 +162,7 @@ def generate_all_assets(
     output_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
 
-    bg_color = _resolve_bg_color(bg_config, source)
+    bg_color = _resolve_bg_color(bg_config)
 
     for asset in ASSETS:
         size = asset["size"]
@@ -178,13 +173,13 @@ def generate_all_assets(
         elif variant == "tinted":
             canvas = _make_ios_tinted(size, bg_config, source, asset["icon_fraction"])
         elif variant == "background":
-            canvas = create_background(size, bg_config, source=source)
+            canvas = create_background(size, bg_config)
         elif variant == "monochrome":
             canvas = Image.new("RGBA", size, (0, 0, 0, 0))
             mono_source = _make_monochrome(source)
             _place_icon_centered(canvas, mono_source, asset["icon_fraction"])
         elif asset["has_background"]:
-            canvas = create_background(size, bg_config, source=source)
+            canvas = create_background(size, bg_config)
             _place_icon_centered(canvas, source, asset["icon_fraction"])
         else:
             canvas = Image.new("RGBA", size, (0, 0, 0, 0))

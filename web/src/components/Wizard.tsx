@@ -9,6 +9,7 @@ import ReviewStep from "@/components/steps/ReviewStep";
 import RefineStep from "@/components/steps/RefineStep";
 import BackgroundStep from "@/components/steps/BackgroundStep";
 import ExportStep from "@/components/steps/ExportStep";
+import { PRESETS } from "@/lib/backgroundPresets";
 import type { WizardState, WizardAction } from "@/lib/types";
 
 const initialState: WizardState = {
@@ -16,7 +17,11 @@ const initialState: WizardState = {
   description: "",
   iconBase64: null,
   editMessage: "",
-  backgroundConfig: { type: "auto" },
+  backgroundConfig: {
+    type: "gradient",
+    colors: PRESETS[0].colors,
+    direction: PRESETS[0].direction,
+  },
   assets: null,
   expoConfig: null,
   backgroundColor: null,

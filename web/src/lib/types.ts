@@ -12,7 +12,7 @@ export interface EditRequest {
 }
 
 export interface BackgroundConfig {
-  type: "auto" | "solid" | "gradient";
+  type: "solid" | "gradient";
   color?: string;
   colors?: string[];
   direction?: string;

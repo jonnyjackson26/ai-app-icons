@@ -167,12 +167,6 @@ async def backgrounds():
     """List available background types and their configuration."""
     return [
         BackgroundTypeInfo(
-            type="auto",
-            description="Smart gradient derived from the icon's dominant colors",
-            required_fields=[],
-            optional_fields=["direction"],
-        ),
-        BackgroundTypeInfo(
             type="solid",
             description="Single solid hex color",
             required_fields=["color"],

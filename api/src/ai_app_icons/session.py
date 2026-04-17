@@ -14,7 +14,7 @@ class Session:
 
     original_description: str = ""
     current_image: Image.Image | None = None
-    bg_config: dict = field(default_factory=lambda: {"type": "auto"})
+    bg_config: dict = field(default_factory=lambda: {"type": "solid", "color": "#1a1a2e"})
     output_dir: Path = field(default_factory=lambda: Path("output"))
 
     @property
@@ -25,4 +25,4 @@ class Session:
         """Clear all state for a fresh start."""
         self.original_description = ""
         self.current_image = None
-        self.bg_config = {"type": "auto"}
+        self.bg_config = {"type": "solid", "color": "#1a1a2e"}

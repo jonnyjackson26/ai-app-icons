@@ -104,31 +104,19 @@ def prompt_background() -> dict:
     """Prompt user to configure the background. Returns a bg_config dict."""
     console.print()
     console.print("[bold]How would you like the background?[/]")
-    console.print("  [bright_cyan][1][/] Auto — smart gradient from icon colors [dim](recommended)[/]")
-    console.print("  [bright_cyan][2][/] Solid color")
-    console.print("  [bright_cyan][3][/] Custom gradient")
-    console.print("  [bright_cyan][4][/] Background image")
+    console.print("  [bright_cyan][1][/] Solid color")
+    console.print("  [bright_cyan][2][/] Custom gradient")
+    console.print("  [bright_cyan][3][/] Background image")
     console.print()
 
-    choice = Prompt.ask("[bold]Choose[/]", choices=["1", "2", "3", "4"], show_choices=False)
+    choice = Prompt.ask("[bold]Choose[/]", choices=["1", "2", "3"], show_choices=False)
 
     if choice == "1":
-        return _prompt_auto_bg()
-    elif choice == "2":
         return _prompt_solid_bg()
-    elif choice == "3":
+    elif choice == "2":
         return _prompt_gradient_bg()
     else:
         return _prompt_image_bg()
-
-
-def _prompt_auto_bg() -> dict:
-    """Prompt for auto background options."""
-    direction = Prompt.ask(
-        "[dim]Gradient direction[/]",
-        default="to-bottom-right",
-    )
-    return {"type": "auto", "direction": direction}
 
 
 def _prompt_solid_bg() -> dict:

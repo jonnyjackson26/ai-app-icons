@@ -46,7 +46,7 @@ class AssetsRequest(BaseModel):
         description="Base64-encoded PNG of the source icon",
     )
     background: BackgroundConfig = Field(
-        default_factory=lambda: BackgroundConfig(),
+        ...,
         description="Background configuration",
     )
 
@@ -54,8 +54,8 @@ class AssetsRequest(BaseModel):
 class BackgroundConfig(BaseModel):
     """Background configuration for asset generation."""
     type: str = Field(
-        default="auto",
-        description="Background type: auto, solid, gradient, or image",
+        ...,
+        description="Background type: solid, gradient, or image",
     )
     color: str | None = Field(
         default=None,

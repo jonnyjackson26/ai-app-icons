@@ -77,7 +77,7 @@ from pathlib import Path
 
 icon = generate_icon("A friendly robot for a coding app")
 edited, message = edit_icon(icon, "Make the colors warmer")
-generate_all_assets(edited, {"type": "auto"}, Path("output"))
+generate_all_assets(edited, {"type": "gradient", "colors": ["#0f0c29", "#302b63"]}, Path("output"))
 ```
 
 ### Web app
@@ -107,7 +107,6 @@ Open `http://localhost:3000`. To point at a deployed API, set `NEXT_PUBLIC_API_U
 
 ## Background types
 
-- **Auto gradient** (default): extracts dominant colors from your icon — `{"type": "auto"}`
 - **Solid color**: `{"type": "solid", "color": "#1a1a2e"}`
 - **Gradient**: `{"type": "gradient", "colors": ["#0f0c29", "#302b63"], "direction": "to-bottom"}`
 - **Image**: `{"type": "image", "path": "background.png"}`

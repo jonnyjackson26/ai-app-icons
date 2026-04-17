@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
-import IconPreview from "@/components/ui/IconPreview";
+import BackgroundPreview from "@/components/BackgroundPreview";
+import { PRESETS } from "@/lib/backgroundPresets";
 import type { BackgroundConfig, WizardAction } from "@/lib/types";
 
 interface Props {
   iconBase64: string;
   dispatch: React.Dispatch<WizardAction>;
 }
+
+type BgType = "preset" | "solid" | "gradient";
 
 const DIRECTIONS = [
   "to-bottom-right",
@@ -21,21 +24,27 @@ const DIRECTIONS = [
   "to-top-left",
 ];
 
+function presetGradientCss(colors: string[]): string {
+  return `linear-gradient(135deg, ${colors.join(", ")})`;
+}
+
 export default function BackgroundStep({ iconBase64, dispatch }: Props) {
-  const [bgType, setBgType] = useState<"auto" | "solid" | "gradient">("auto");
+  const [bgType, setBgType] = useState<BgType>("preset");
+  const [presetId, setPresetId] = useState(PRESETS[0].id);
   const [solidColor, setSolidColor] = useState("#1a1a2e");
   const [gradColors, setGradColors] = useState(["#0f0c29", "#302b63"]);
   const [direction, setDirection] = useState("to-bottom-right");
 
-  const handleGenerate = () => {
-    let config: BackgroundConfig;
-    if (bgType === "auto") {
-      config = { type: "auto", direction };
-    } else if (bgType === "solid") {
-      config = { type: "solid", color: solidColor };
-    } else {
-      config = { type: "gradient", colors: gradColors, direction };
+  const config: BackgroundConfig = useMemo(() => {
+    if (bgType === "preset") {
+      const preset = PRESETS.find((p) => p.id === presetId) ?? PRESETS[0];
+      return { type: "gradient", colors: preset.colors, direction: preset.direction };
     }
+    if (bgType === "solid") return { type: "solid", color: solidColor };
+    return { type: "gradient", colors: gradColors, direction };
+  }, [bgType, presetId, solidColor, gradColors, direction]);
+
+  const handleGenerate = () => {
     dispatch({ type: "SET_BACKGROUND", config });
     dispatch({ type: "EXPORT_START" });
   };
@@ -46,10 +55,10 @@ export default function BackgroundStep({ iconBase64, dispatch }: Props) {
         Choose a background
       </h2>
 
-      <IconPreview base64={iconBase64} size="sm" />
+      <BackgroundPreview iconBase64={iconBase64} config={config} />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        {(["auto", "solid", "gradient"] as const).map((t) => (
+        {(["preset", "solid", "gradient"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setBgType(t)}
@@ -63,7 +72,7 @@ export default function BackgroundStep({ iconBase64, dispatch }: Props) {
               {t}
             </p>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              {t === "auto" && "Smart gradient from icon colors"}
+              {t === "preset" && "Pick a ready-made gradient"}
               {t === "solid" && "Single solid color"}
               {t === "gradient" && "Custom color gradient"}
             </p>
@@ -71,8 +80,31 @@ export default function BackgroundStep({ iconBase64, dispatch }: Props) {
         ))}
       </div>
 
-      {/* Config for each type */}
       <div className="space-y-3">
+        {bgType === "preset" && (
+          <div className="grid grid-cols-3 gap-3">
+            {PRESETS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setPresetId(p.id)}
+                className={`rounded-lg border-2 overflow-hidden cursor-pointer transition-colors ${
+                  presetId === p.id
+                    ? "border-blue-500"
+                    : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
+                }`}
+              >
+                <div
+                  className="h-16 w-full"
+                  style={{ background: presetGradientCss(p.colors) }}
+                />
+                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 py-1.5">
+                  {p.name}
+                </p>
+              </button>
+            ))}
+          </div>
+        )}
+
         {bgType === "solid" && (
           <div className="flex items-center gap-3">
             <label className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -145,7 +177,7 @@ export default function BackgroundStep({ iconBase64, dispatch }: Props) {
           </div>
         )}
 
-        {(bgType === "auto" || bgType === "gradient") && (
+        {bgType === "gradient" && (
           <div className="flex items-center gap-3">
             <label className="text-sm text-zinc-600 dark:text-zinc-400">
               Direction
