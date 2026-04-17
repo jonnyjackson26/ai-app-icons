@@ -67,7 +67,10 @@ def prompt_source() -> str:
 
 
 def prompt_mode() -> str:
-    """Ask the user to pick a generation style mode. Returns the mode id."""
+    """Ask the user to pick a generation style mode.
+
+    Returns the mode id, or an empty string for 'skip' (let the model decide).
+    """
     mode_ids = list(MODES.keys())
     console.print()
     console.print("[bold]Pick a style:[/]")
@@ -78,15 +81,22 @@ def prompt_mode() -> str:
             f"  [bright_cyan][{idx}][/] [bold]{mode.name}[/]{default_tag} "
             f"— [dim]{mode.description}[/]"
         )
+    skip_choice = str(len(mode_ids) + 1)
+    console.print(
+        f"  [bright_cyan][{skip_choice}][/] [bold]Skip[/] "
+        f"— [dim]No specific style, let the model decide.[/]"
+    )
     console.print()
 
     default_choice = str(mode_ids.index(DEFAULT_MODE_ID) + 1)
     choice = Prompt.ask(
         "[bold]Choose[/]",
-        choices=[str(i) for i in range(1, len(mode_ids) + 1)],
+        choices=[str(i) for i in range(1, len(mode_ids) + 2)],
         default=default_choice,
         show_choices=False,
     )
+    if choice == skip_choice:
+        return ""
     return mode_ids[int(choice) - 1]
 
 

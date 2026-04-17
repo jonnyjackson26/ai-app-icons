@@ -2,23 +2,25 @@
 
 import { useCallback, useState } from "react";
 import Button from "@/components/ui/Button";
-import { DEFAULT_MODE_ID, MODES } from "@/lib/generationModes";
+import { MODES } from "@/lib/generationModes";
 import type { WizardAction } from "@/lib/types";
 
 interface Props {
   dispatch: React.Dispatch<WizardAction>;
 }
 
+const SKIP_MODE = "__skip__";
+
 export default function DescribeStep({ dispatch }: Props) {
   const [mode, setMode] = useState<"describe" | "upload" | "convert">("describe");
   const [description, setDescription] = useState("");
-  const [styleMode, setStyleMode] = useState<string>(DEFAULT_MODE_ID);
+  const [styleMode, setStyleMode] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
   const handleGenerate = () => {
-    if (!description.trim()) return;
+    if (!description.trim() || styleMode === null) return;
     dispatch({ type: "SET_DESCRIPTION", description: description.trim() });
-    dispatch({ type: "SET_MODE", mode: styleMode });
+    dispatch({ type: "SET_MODE", mode: styleMode === SKIP_MODE ? "" : styleMode });
     dispatch({ type: "GENERATE_START" });
   };
 
@@ -135,12 +137,27 @@ export default function DescribeStep({ dispatch }: Props) {
                   </p>
                 </button>
               ))}
+              <button
+                onClick={() => setStyleMode(SKIP_MODE)}
+                className={`rounded-lg border-2 border-dashed p-3 text-left transition-colors cursor-pointer ${
+                  styleMode === SKIP_MODE
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
+                    : "border-zinc-300 dark:border-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-500"
+                }`}
+              >
+                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                  Skip
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                  No specific style — let the model decide.
+                </p>
+              </button>
             </div>
           </div>
 
           <Button
             onClick={handleGenerate}
-            disabled={!description.trim()}
+            disabled={!description.trim() || styleMode === null}
             className="w-full sm:w-auto"
           >
             Generate Icon
