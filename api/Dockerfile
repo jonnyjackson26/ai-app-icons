@@ -2,9 +2,10 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install the package with API extras
+# Install the package with API + telemetry extras
+# (Sentry SDK is only activated at runtime when SENTRY_DSN is set.)
 COPY . .
-RUN pip install --no-cache-dir ".[api]"
+RUN pip install --no-cache-dir ".[api,telemetry]"
 
 # Expose the port fly.io expects
 EXPOSE 8080

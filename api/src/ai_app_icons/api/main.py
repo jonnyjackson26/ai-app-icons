@@ -12,8 +12,29 @@ from .error_handlers import openai_exception_handler
 from .routes import router
 
 
+def _init_sentry() -> None:
+    dsn = os.getenv("SENTRY_DSN")
+    if not dsn:
+        return
+    try:
+        import sentry_sdk
+    except ImportError:
+        return
+    sentry_sdk.init(
+        dsn=dsn,
+        environment=os.getenv("SENTRY_ENVIRONMENT", "production"),
+        release=__version__,
+        send_default_pii=True,
+        enable_logs=True,
+        traces_sample_rate=1.0,
+        profile_session_sample_rate=1.0,
+        profile_lifecycle="trace",
+    )
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
+    _init_sentry()
     app = FastAPI(
         title="AI App Icons",
         description=(

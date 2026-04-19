@@ -60,6 +60,12 @@ async def health():
     return HealthResponse(version=__version__)
 
 
+@router.get("/sentry-debug", include_in_schema=False)
+async def sentry_debug():
+    """Trigger a ZeroDivisionError to verify Sentry is wired up."""
+    _ = 1 / 0
+
+
 @router.post("/generate", response_model=ImageResponse)
 async def generate(req: GenerateRequest):
     """Generate a new app icon from a text description.

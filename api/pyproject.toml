@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 cli = ["rich"]
 api = ["fastapi", "uvicorn[standard]", "python-multipart"]
+telemetry = ["sentry-sdk[fastapi]>=2.35.0"]
 dev = ["pytest", "httpx"]
 
 [project.scripts]

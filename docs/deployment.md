@@ -44,6 +44,21 @@ fly secrets set ALLOWED_ORIGINS=https://your-web-app.vercel.app
 
 Multiple origins: separate with commas.
 
+### Enable Sentry telemetry (optional)
+
+Fly does not read your local `.env` file — env vars in production come from `fly secrets`. The Dockerfile already bundles the Sentry SDK (`[telemetry]` extra), but it only activates at runtime when `SENTRY_DSN` is set. With no DSN, it's a no-op.
+
+To turn it on:
+
+```bash
+fly secrets set SENTRY_DSN=https://...@...ingest.sentry.io/...
+fly secrets set SENTRY_ENVIRONMENT=production
+```
+
+Secret changes trigger a restart automatically. Verify by hitting `https://ai-app-icons.fly.dev/sentry-debug` — the request will 500 on purpose, and an event should appear in your Sentry project within a minute. (The route is hidden from the OpenAPI spec but always reachable.)
+
+To disable telemetry later: `fly secrets unset SENTRY_DSN` and redeploy.
+
 ### Deploy
 
 ```bash

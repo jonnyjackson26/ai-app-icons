@@ -57,6 +57,8 @@ uvicorn ai_app_icons.api.main:app --reload
 
 API runs at `http://localhost:8000`. Open `/docs` for Swagger UI.
 
+**Optional telemetry (Sentry).** Install with `pip install -e ".[api,telemetry]"` and set `SENTRY_DSN` to your own Sentry project to capture errors, traces, profiles, and logs. With no DSN set, Sentry is not initialized. Tune `SENTRY_TRACES_SAMPLE_RATE` and `SENTRY_PROFILE_SESSION_SAMPLE_RATE` (0.0–1.0) in production to stay within your Sentry quota.
+
 | Method | Endpoint       | Description                                                    |
 | ------ | -------------- | -------------------------------------------------------------- |
 | POST   | `/generate`    | Generate icon from a text description (optional `mode` field)  |
