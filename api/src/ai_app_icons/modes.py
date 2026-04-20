@@ -31,10 +31,10 @@ MODES: dict[str, Mode] = {
         name="Flat",
         description="Bold geometric shapes, solid colors, no shadows.",
         style_block=(
-            "- Clean, modern flat-design style (think iOS or Material You app icons).\n"
-            "- Bold, simple geometric shapes with a clear silhouette.\n"
-            "- Vibrant yet professional palette with 3-4 colors and strong contrast.\n"
-            "- Solid fills — no shadows, highlights, or gradients."
+            "- Flat-design artwork: bold, simple geometric shapes with a confident silhouette.\n"
+            "- Vibrant yet professional 3-4 color palette with strong contrast.\n"
+            "- Solid fills only — no shadows, highlights, gradients, or bevels.\n"
+            "- Style the SYMBOL itself this way. Do not render a flat-colored rounded-square tile behind it; surrounding pixels stay transparent."
         ),
     ),
     "ios-liquid-glass": Mode(
@@ -42,9 +42,10 @@ MODES: dict[str, Mode] = {
         name="iOS Liquid Glass",
         description="Glossy translucent material with soft refraction.",
         style_block=(
-            "- iOS 'Liquid Glass' style: glossy, translucent material with soft refraction and specular highlights.\n"
-            "- A crisp central symbol floats on top of (or inside) a frosted glass layer with subtle edge-lighting.\n"
-            "- Cool muted palette with silver/blue accents; gentle gradients allowed to convey glass depth."
+            "- The SUBJECT is sculpted from liquid glass: glossy, translucent material with soft refraction, gentle caustics, and crisp specular highlights along its edges.\n"
+            "- Subtle gradients across the glass surface are expected; a faint contact shadow directly under the floating glass object is fine.\n"
+            "- Cool muted palette with silver / blue accents inside the glass.\n"
+            "- The glass IS the subject, not a frame around it. Do NOT draw a frosted rounded-square tile with a symbol inside — the symbol itself is the glass object, floating on transparent pixels."
         ),
     ),
     "skeuomorphic": Mode(
@@ -52,9 +53,10 @@ MODES: dict[str, Mode] = {
         name="Skeuomorphic",
         description="Realistic textures, lighting, and materials (iOS 6 era).",
         style_block=(
-            "- Skeuomorphic style: render the symbol as a real physical object (leather, metal, wood, paper, fabric, etc.).\n"
-            "- Rich textures, realistic lighting, drop shadows, inner bevels, and subtle gradients.\n"
-            "- Saturated, warm palette; shading and highlights are essential to the look."
+            "- Skeuomorphic: render the symbol as a real physical object (leather, metal, wood, paper, fabric, glass, etc.) that could sit on a table.\n"
+            "- Rich material textures, realistic lighting, drop shadows, inner bevels, and subtle gradients live on the OBJECT's own surfaces.\n"
+            "- Saturated, warm palette; shading and highlights are essential.\n"
+            "- Do not wrap the object in a textured rounded-square tile. The texture belongs to the object; everything outside the object is transparent."
         ),
     ),
     "minimal": Mode(
@@ -62,9 +64,10 @@ MODES: dict[str, Mode] = {
         name="Minimal",
         description="Single clean symbol, monochrome, lots of negative space.",
         style_block=(
-            "- Minimal style: a single clean symbol built from 1-2 stroke weights or simple solid shapes.\n"
-            "- Monochrome or two-color palette with abundant negative space.\n"
-            "- No shadows, gradients, or ornamentation."
+            "- Minimal: a single clean symbol built from 1-2 stroke weights or simple solid shapes.\n"
+            "- Monochrome or two-color palette.\n"
+            "- No shadows, gradients, or ornamentation.\n"
+            "- The negative space around the symbol IS the transparent background — do not draw a visible rectangle, circle, or colored field behind it."
         ),
     ),
     "illustrative": Mode(
@@ -72,9 +75,10 @@ MODES: dict[str, Mode] = {
         name="Illustrative",
         description="Warm hand-drawn look with organic shapes and texture.",
         style_block=(
-            "- Illustrative style: warm, hand-drawn look with organic shapes and subtle paper/brush texture.\n"
+            "- Illustrative: a warm, hand-drawn-feeling subject with organic shapes and subtle paper / brush / grain texture on the subject's own surfaces.\n"
             "- Painterly color blends and soft outlines; friendly and editorial.\n"
-            "- 4-6 harmonious colors with playful character."
+            "- 4-6 harmonious colors with playful character.\n"
+            "- Texture and brushwork belong to the subject. Do not paint a textured square or rounded-rectangle panel behind the subject — surrounding pixels stay transparent."
         ),
     ),
     "3d": Mode(
@@ -82,9 +86,10 @@ MODES: dict[str, Mode] = {
         name="3D",
         description="Rendered 3D object with soft lighting and depth.",
         style_block=(
-            "- Rendered in a modern 3D style: smooth extruded geometry with soft global illumination.\n"
+            "- A modern 3D render: smooth extruded geometry with soft global illumination.\n"
             "- Glossy or matte surfaces with realistic shading and ambient occlusion.\n"
-            "- Hero central object, slight perspective or isometric view; gradient shading expected."
+            "- A hero central object seen in slight perspective or isometric view; gradient shading on the object is expected.\n"
+            "- A subtle contact shadow directly beneath the object is OK, but no rendered ground plane, no studio backdrop, no environment — just the object floating on transparent pixels."
         ),
     ),
 }

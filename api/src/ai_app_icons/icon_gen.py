@@ -18,26 +18,55 @@ load_dotenv()
 # --- Prompt templates ---------------------------------------------------------
 
 _ICON_PROMPT_TEMPLATE = """\
-Create a mobile app icon for the following app:
-{description}
+Create the artwork for a mobile app icon.
 
-Design requirements — follow every point:
-- A single, centered graphic element on a TRANSPARENT background.
-{style_block}
-- Must be clearly recognizable when displayed at 48 x 48 pixels.
+App: {description}
+
+CRITICAL — output format (read carefully, this is the most common failure):
+- Output ONLY the subject itself on a fully TRANSPARENT background, as if the \
+subject were cut out and floating in empty space.
+- Think of it like an emoji, a sticker, or a spot illustration: just the \
+artwork, nothing framing it.
+- Do NOT draw a rounded-square, squircle, circle, hexagon, or any container / \
+badge / tile around the subject.
+- Do NOT fill the frame with a colored panel, gradient backdrop, vignette, \
+photo studio backdrop, or drop-shadow platform.
+- The pixels around the subject MUST be empty (alpha = 0). A real app \
+background is composited in later by the pipeline — you are only creating the \
+symbol, never the finished tile.
+- The subject itself may be any shape its design calls for (round logo, \
+square gadget, organic creature). The rule is only about what is *around* the \
+subject.
+
+Subject:
+- A single, centered graphic that intuitively represents the app's core \
+purpose.
+- Large and bold: fill most of the image without touching the edges. Avoid \
+tiny, thin, or intricate details that vanish at 48 x 48 pixels.
+- Strong, instantly-readable silhouette.
 - Absolutely NO text, letters, numbers, or written words anywhere.
-- NO rounded-rectangle border, phone frame, or device mockup.
-- The symbol should intuitively represent the app's core purpose.
-- Generous padding around the symbol (leave ~15% margin on each side).
+- NO device mockup, phone frame, browser UI, or app-store chrome.
+
+Visual style:
+{style_block}
 """
 
 _EDIT_PROMPT_TEMPLATE = """\
-Edit this app icon. Make the following change and NOTHING else:
+Edit this app icon. Apply the following change and NOTHING else:
 {instruction}
 
-Keep the exact same style, composition, and layout for everything not \
-mentioned. The background must remain transparent. No text or letters. \
-No rounded-rectangle border."""
+Preserve the exact same style, composition, and layout for everything not \
+mentioned.
+
+Hard rules (enforce these even if the source image violates them):
+- The output background MUST be fully transparent (alpha = 0 around the \
+subject). Do not bake in a colored background.
+- Do NOT add a rounded-square, squircle, circle, or any container tile \
+around the subject.
+- Do NOT add a colored panel, gradient backdrop, or drop-shadow platform \
+behind the subject.
+- No text, letters, or numbers.
+- No device mockup or phone frame."""
 
 
 def build_icon_prompt(description: str, mode_id: str | None = None) -> str:
