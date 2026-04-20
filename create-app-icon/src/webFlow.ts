@@ -2,6 +2,7 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { spawn } from "node:child_process";
 import { platform } from "node:os";
+import { basename } from "node:path";
 import kleur from "kleur";
 import type { AssetsResponse } from "./api.js";
 
@@ -19,10 +20,11 @@ export async function runWebFlow(args: WebFlowArgs): Promise<AssetsResponse> {
     expectedOrigin,
   });
 
+  const projectName = basename(process.cwd());
   const browserUrl =
     `${args.webUrl}/?cli_callback=${encodeURIComponent(
       `http://127.0.0.1:${port}/result`,
-    )}&cli_token=${token}`;
+    )}&cli_token=${token}&cli_project=${encodeURIComponent(projectName)}`;
 
   const opened = openInBrowser(browserUrl);
   if (opened) {

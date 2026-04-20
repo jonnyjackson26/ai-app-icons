@@ -17,6 +17,7 @@ export interface WizardData {
   error: string | null;
   cliCallback: string | null;
   cliToken: string | null;
+  cliProjectName: string | null;
 }
 
 const initialData: WizardData = {
@@ -35,6 +36,7 @@ const initialData: WizardData = {
   error: null,
   cliCallback: null,
   cliToken: null,
+  cliProjectName: null,
 };
 
 interface WizardContextValue {

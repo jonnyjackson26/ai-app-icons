@@ -26,7 +26,15 @@ export default function ExportStep() {
   const router = useRouter();
   const { data, update, reset } = useWizard();
   const iconBase64 = data.iconBase64!;
-  const { assets, expoConfig, backgroundConfig, backgroundColor, cliCallback, cliToken } = data;
+  const {
+    assets,
+    expoConfig,
+    backgroundConfig,
+    backgroundColor,
+    cliCallback,
+    cliToken,
+    cliProjectName,
+  } = data;
 
   const [configCopied, setConfigCopied] = useState(false);
   const [cliSendState, setCliSendState] = useState<
@@ -124,12 +132,11 @@ export default function ExportStep() {
       {inCliMode ? (
         <div className="rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-5 space-y-3">
           <p className="text-sm text-zinc-700 dark:text-zinc-200">
-            You started this from the{" "}
+            Ready to wire these assets into{" "}
             <code className="font-mono text-xs bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
-              create-app-icon
-            </code>{" "}
-            CLI. Send these assets back so it can wire them into your Expo
-            project.
+              {cliProjectName || "your Expo project"}
+            </code>
+            ?
           </p>
           {cliSendState === "sent" ? (
             <p className="text-sm font-medium text-green-700 dark:text-green-300">
@@ -141,7 +148,11 @@ export default function ExportStep() {
                 onClick={handleSendToCli}
                 disabled={cliSendState === "sending"}
               >
-                {cliSendState === "sending" ? "Sending..." : "Send to your CLI"}
+                {cliSendState === "sending"
+                  ? "Adding..."
+                  : cliProjectName
+                  ? `Add to ${cliProjectName}`
+                  : "Add to my Expo app"}
               </Button>
               {cliSendState === "error" && (
                 <>

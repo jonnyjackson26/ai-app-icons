@@ -59,6 +59,7 @@ export default function Wizard() {
 
   const cliCallbackRaw = params.get("cli_callback");
   const cliTokenRaw = params.get("cli_token");
+  const cliProjectRaw = params.get("cli_project");
 
   useEffect(() => {
     if (!canRender) {
@@ -77,9 +78,13 @@ export default function Wizard() {
       console.warn("Ignoring non-loopback cli_callback:", cliCallbackRaw);
       return;
     }
-    update({ cliCallback: cliCallbackRaw, cliToken: cliTokenRaw });
+    update({
+      cliCallback: cliCallbackRaw,
+      cliToken: cliTokenRaw,
+      cliProjectName: cliProjectRaw || null,
+    });
     console.log("[wizard] CLI mode active");
-  }, [cliCallbackRaw, cliTokenRaw, data.cliCallback, data.cliToken, update]);
+  }, [cliCallbackRaw, cliTokenRaw, cliProjectRaw, data.cliCallback, data.cliToken, update]);
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -87,7 +92,10 @@ export default function Wizard() {
         <div className="mb-4 flex items-center justify-center gap-2 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 px-3 py-1.5">
           <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
           <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-            Connected to <code className="font-mono">create-app-icon</code> CLI
+            Connected to{" "}
+            <code className="font-mono">
+              {data.cliProjectName || "your Expo project"}
+            </code>
           </span>
         </div>
       )}
