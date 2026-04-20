@@ -11,7 +11,9 @@ import { newId, type ChatMessage } from "@/lib/chatTypes";
 import { useStreamText } from "@/lib/useStreamText";
 
 const WELCOME =
-  "Welcome to ai-app-icons\nCreate icons for your expo app with ai";
+  "Welcome to ai-app-icons!\n" +
+  "First, I'll generate a logo for your app — just the artwork, no background yet. " +
+  "Once you like the logo, pick a background and I'll generate every asset your Expo app needs (iOS, Android, splash, favicon) for full platform coverage.";
 
 export default function ChatView() {
   const router = useRouter();
@@ -21,6 +23,7 @@ export default function ChatView() {
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [attachedName, setAttachedName] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [sendingOp, setSendingOp] = useState<"generate" | "refine" | null>(null);
 
   const welcomeIdRef = useRef<string | null>(null);
   const welcomeStartedRef = useRef(false);
@@ -134,7 +137,10 @@ export default function ChatView() {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
 
+    const op: "generate" | "refine" =
+      attachedImage || data.iconBase64 ? "refine" : "generate";
     setSending(true);
+    setSendingOp(op);
 
     try {
       if (attachedImage) {
@@ -189,6 +195,7 @@ export default function ChatView() {
       appendAssistantError(message);
     } finally {
       setSending(false);
+      setSendingOp(null);
     }
   }, [
     text,
@@ -203,9 +210,16 @@ export default function ChatView() {
     appendAssistantError,
   ]);
 
+  const loadingLabel =
+    sendingOp === "generate"
+      ? "Generating your icon..."
+      : sendingOp === "refine"
+        ? "Refining your icon..."
+        : null;
+
   return (
     <div className="flex flex-col flex-1 min-h-0 w-full">
-      <MessageList messages={data.messages} />
+      <MessageList messages={data.messages} loadingLabel={loadingLabel} />
 
       <div className="shrink-0 pt-2 border-t border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/70 backdrop-blur">
         <Suggestions

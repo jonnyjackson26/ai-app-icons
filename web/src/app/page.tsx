@@ -22,9 +22,6 @@ export default function Home() {
           </Suspense>
         </WizardProvider>
       </main>
-      <footer className="border-t border-zinc-200 dark:border-zinc-800 px-4 py-3 text-center text-xs text-zinc-400 dark:text-zinc-500 shrink-0">
-        Open source &middot; Powered by OpenAI
-      </footer>
     </div>
   );
 }
