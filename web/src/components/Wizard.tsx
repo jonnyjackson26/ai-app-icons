@@ -123,7 +123,7 @@ export default function Wizard() {
       {step === "chat" && <ChatView />}
       {step !== "chat" && (
         <div className="flex-1 min-h-0 overflow-y-auto px-4">
-          <div className="w-full max-w-2xl mx-auto py-6">
+          <div className="w-full max-w-4xl mx-auto py-6">
             {step === "background" && data.iconBase64 && <BackgroundStep />}
             {step === "export" && data.iconBase64 && <ExportStep />}
           </div>
