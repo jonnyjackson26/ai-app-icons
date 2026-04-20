@@ -1,0 +1,18 @@
+export const REFINEMENT_HINTS: string[] = [
+  "Make the colors warmer",
+  "Try a cooler palette",
+  "Simplify the silhouette",
+  "Add more contrast",
+  "Make it feel more playful",
+  "Make it feel more premium",
+  "Flatten the shading",
+  "Make the subject larger",
+  "Try a bolder outline",
+  "Soften the edges",
+  "Add a subtle gradient",
+  "Use a more unexpected color",
+  "Make it look more modern",
+  "Make it feel friendlier",
+  "Simplify the details",
+  "Add a touch of texture",
+];

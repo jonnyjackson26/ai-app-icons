@@ -4,20 +4,18 @@ import { useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import StepIndicator from "@/components/ui/StepIndicator";
 import ErrorMessage from "@/components/ui/ErrorMessage";
-import DescribeStep from "@/components/steps/DescribeStep";
-import ReviewStep from "@/components/steps/ReviewStep";
+import ChatView from "@/components/chat/ChatView";
 import BackgroundStep from "@/components/steps/BackgroundStep";
 import ExportStep from "@/components/steps/ExportStep";
 import { useWizard, type WizardData } from "@/components/WizardContext";
 
-export const STEPS = ["describe", "review", "background", "export"] as const;
+export const STEPS = ["chat", "background", "export"] as const;
 export type Step = (typeof STEPS)[number];
 
 // What must be in context for the step's component to render safely.
-// Used to guard deep-links — ?step=X with insufficient state redirects to describe.
+// Used to guard deep-links — ?step=X with insufficient state redirects to chat.
 const REQUIRES: Record<Step, (d: WizardData) => boolean> = {
-  describe: () => true,
-  review: (d) => !!d.iconBase64,
+  chat: () => true,
   background: (d) => !!d.iconBase64,
   export: (d) => !!d.iconBase64,
 };
@@ -26,8 +24,7 @@ const REQUIRES: Record<Step, (d: WizardData) => boolean> = {
 // Stricter than REQUIRES for export: clicking the export chip should only jump
 // to cached assets, never silently trigger a fresh generation.
 export const REACHED: Record<Step, (d: WizardData) => boolean> = {
-  describe: () => true,
-  review: (d) => !!d.iconBase64,
+  chat: () => true,
   background: (d) => !!d.iconBase64,
   export: (d) => !!d.assets,
 };
@@ -53,9 +50,9 @@ export default function Wizard() {
   const { data, update } = useWizard();
 
   const raw = params.get("step");
-  const requested: Step = isStep(raw) ? raw : "describe";
+  const requested: Step = isStep(raw) ? raw : "chat";
   const canRender = REQUIRES[requested](data);
-  const step: Step = canRender ? requested : "describe";
+  const step: Step = canRender ? requested : "chat";
 
   const cliCallbackRaw = params.get("cli_callback");
   const cliTokenRaw = params.get("cli_token");
@@ -63,7 +60,7 @@ export default function Wizard() {
 
   useEffect(() => {
     if (!canRender) {
-      router.replace(`${pathname}?step=describe`);
+      router.replace(`${pathname}?step=chat`);
     }
   }, [canRender, pathname, router]);
 
@@ -86,10 +83,10 @@ export default function Wizard() {
     console.log("[wizard] CLI mode active");
   }, [cliCallbackRaw, cliTokenRaw, cliProjectRaw, data.cliCallback, data.cliToken, update]);
 
-  return (
-    <div className="w-full max-w-2xl mx-auto">
+  const chrome = (
+    <>
       {data.cliCallback && (
-        <div className="mb-4 flex items-center justify-center gap-2 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 px-3 py-1.5">
+        <div className="mb-3 flex items-center justify-center gap-2 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 px-3 py-1.5">
           <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
           <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
             Connected to{" "}
@@ -100,20 +97,33 @@ export default function Wizard() {
         </div>
       )}
       <StepIndicator current={step} />
-
       {data.error && (
-        <div className="mb-6">
+        <div className="mb-4 max-w-2xl mx-auto w-full">
           <ErrorMessage
             message={data.error}
             onDismiss={() => update({ error: null })}
           />
         </div>
       )}
+    </>
+  );
 
-      {step === "describe" && <DescribeStep />}
-      {step === "review" && data.iconBase64 && <ReviewStep />}
-      {step === "background" && data.iconBase64 && <BackgroundStep />}
-      {step === "export" && data.iconBase64 && <ExportStep />}
+  if (step === "chat") {
+    return (
+      <div className="flex flex-col flex-1 min-h-0 w-full">
+        <div className="pt-4">{chrome}</div>
+        <ChatView />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="w-full max-w-2xl mx-auto py-6">
+        {chrome}
+        {step === "background" && data.iconBase64 && <BackgroundStep />}
+        {step === "export" && data.iconBase64 && <ExportStep />}
+      </div>
     </div>
   );
 }

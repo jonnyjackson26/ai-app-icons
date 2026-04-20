@@ -3,10 +3,10 @@
 import { createContext, useCallback, useContext, useState } from "react";
 import { PRESETS } from "@/lib/backgroundPresets";
 import { DEFAULT_MODE_ID } from "@/lib/generationModes";
+import type { ChatMessage } from "@/lib/chatTypes";
 import type { AssetFile, BackgroundConfig } from "@/lib/types";
 
 export interface WizardData {
-  description: string;
   mode: string;
   iconBase64: string | null;
   editMessage: string;
@@ -18,10 +18,10 @@ export interface WizardData {
   cliCallback: string | null;
   cliToken: string | null;
   cliProjectName: string | null;
+  messages: ChatMessage[];
 }
 
 const initialData: WizardData = {
-  description: "",
   mode: DEFAULT_MODE_ID,
   iconBase64: null,
   editMessage: "",
@@ -37,12 +37,15 @@ const initialData: WizardData = {
   cliCallback: null,
   cliToken: null,
   cliProjectName: null,
+  messages: [],
 };
 
 interface WizardContextValue {
   data: WizardData;
   update: (partial: Partial<WizardData>) => void;
   reset: () => void;
+  appendMessage: (msg: ChatMessage) => void;
+  updateMessage: (id: string, patch: Partial<ChatMessage>) => void;
 }
 
 const WizardContext = createContext<WizardContextValue | null>(null);
@@ -56,8 +59,26 @@ export function WizardProvider({ children }: { children: React.ReactNode }) {
 
   const reset = useCallback(() => setData(initialData), []);
 
+  const appendMessage = useCallback((msg: ChatMessage) => {
+    setData((prev) => ({ ...prev, messages: [...prev.messages, msg] }));
+  }, []);
+
+  const updateMessage = useCallback(
+    (id: string, patch: Partial<ChatMessage>) => {
+      setData((prev) => ({
+        ...prev,
+        messages: prev.messages.map((m) =>
+          m.id === id ? ({ ...m, ...patch } as ChatMessage) : m,
+        ),
+      }));
+    },
+    [],
+  );
+
   return (
-    <WizardContext.Provider value={{ data, update, reset }}>
+    <WizardContext.Provider
+      value={{ data, update, reset, appendMessage, updateMessage }}
+    >
       {children}
     </WizardContext.Provider>
   );

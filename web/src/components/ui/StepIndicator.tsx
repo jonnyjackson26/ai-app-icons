@@ -5,17 +5,15 @@ import { REACHED, type Step } from "@/components/Wizard";
 import { useWizard } from "@/components/WizardContext";
 
 const STEPS = [
-  { key: "describe", label: "Describe" },
-  { key: "review", label: "Review" },
+  { key: "chat", label: "Create" },
   { key: "background", label: "Background" },
   { key: "export", label: "Export" },
 ] as const;
 
 const stepIndex: Record<Step, number> = {
-  describe: 0,
-  review: 1,
-  background: 2,
-  export: 3,
+  chat: 0,
+  background: 1,
+  export: 2,
 };
 
 export default function StepIndicator({ current }: { current: Step }) {
@@ -23,7 +21,7 @@ export default function StepIndicator({ current }: { current: Step }) {
   const { data } = useWizard();
 
   return (
-    <div className="flex items-center justify-center gap-2 mb-8">
+    <div className="flex items-center justify-center gap-2 mb-4">
       {STEPS.map((step, i) => {
         const isActive = i === activeIdx;
         const completed = i < activeIdx; // user has moved past this step
