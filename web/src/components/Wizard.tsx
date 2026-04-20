@@ -36,6 +36,16 @@ function isStep(value: string | null): value is Step {
   return value !== null && (STEPS as readonly string[]).includes(value);
 }
 
+function isLoopbackHttpUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "http:") return false;
+    return u.hostname === "127.0.0.1" || u.hostname === "localhost";
+  } catch {
+    return false;
+  }
+}
+
 export default function Wizard() {
   const params = useSearchParams();
   const pathname = usePathname();
@@ -47,14 +57,40 @@ export default function Wizard() {
   const canRender = REQUIRES[requested](data);
   const step: Step = canRender ? requested : "describe";
 
+  const cliCallbackRaw = params.get("cli_callback");
+  const cliTokenRaw = params.get("cli_token");
+
   useEffect(() => {
     if (!canRender) {
       router.replace(`${pathname}?step=describe`);
     }
   }, [canRender, pathname, router]);
 
+  useEffect(() => {
+    console.log("[wizard] cli params:", {
+      cli_callback: cliCallbackRaw,
+      cli_token: cliTokenRaw ? `${cliTokenRaw.slice(0, 8)}...` : null,
+    });
+    if (!cliCallbackRaw || !cliTokenRaw) return;
+    if (data.cliCallback === cliCallbackRaw && data.cliToken === cliTokenRaw) return;
+    if (!isLoopbackHttpUrl(cliCallbackRaw)) {
+      console.warn("Ignoring non-loopback cli_callback:", cliCallbackRaw);
+      return;
+    }
+    update({ cliCallback: cliCallbackRaw, cliToken: cliTokenRaw });
+    console.log("[wizard] CLI mode active");
+  }, [cliCallbackRaw, cliTokenRaw, data.cliCallback, data.cliToken, update]);
+
   return (
     <div className="w-full max-w-2xl mx-auto">
+      {data.cliCallback && (
+        <div className="mb-4 flex items-center justify-center gap-2 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 px-3 py-1.5">
+          <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+          <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+            Connected to <code className="font-mono">create-app-icon</code> CLI
+          </span>
+        </div>
+      )}
       <StepIndicator current={step} />
 
       {data.error && (

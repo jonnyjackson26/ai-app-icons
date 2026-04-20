@@ -155,39 +155,138 @@ If you add, rename, or remove a mode, update **both** files. The id strings must
 
 See [docs/deployment.md](docs/deployment.md) — API on Fly.io, web app on Vercel.
 
+## Developing `create-app-icon` locally
+
+The package lives in [`create-app-icon/`](create-app-icon/) and is published as a single-file ESM bundle in `dist/`. You don't need to publish to npm (or run `npx`) while iterating — just build and invoke `dist/index.js` directly.
+
+### First-time setup
+
+```bash
+cd create-app-icon
+npm install
+npm run build        # produces dist/index.js
+```
+
+### The fast iteration loop
+
+Run `build` in watch mode in one terminal:
+
+```bash
+cd create-app-icon
+npm run dev          # tsup --watch; rebuilds dist/ on every save
+```
+
+Then in a scratch Expo project, point Node at the local bundle:
+
+```bash
+cd /path/to/your-expo-project     # must contain app.json / app.config.*
+node /path/to/ai-app-icons/create-app-icon/dist/index.js --help
+node /path/to/ai-app-icons/create-app-icon/dist/index.js        # terminal flow
+node /path/to/ai-app-icons/create-app-icon/dist/index.js --web  # browser flow
+```
+
+### Running against your local API + web app
+
+When you're also editing the Python API or Next web app, point the CLI at `localhost` so you're not bouncing through fly.dev/Vercel:
+
+```bash
+# Terminal 1: Python API
+cd api && uvicorn ai_app_icons.api.main:app --reload
+# Terminal 2: Next web app
+cd web && npm run dev
+# Terminal 3: tsup watch
+cd create-app-icon && npm run dev
+# Terminal 4: scratch Expo project
+cd /path/to/expo-project
+node /path/to/ai-app-icons/create-app-icon/dist/index.js \
+  --api-url http://localhost:8000 \
+  --web-url http://localhost:3000 \
+  --web
+```
+
+When CLI mode is active, the wizard shows a blue "Connected to create-app-icon CLI" badge above the step indicator — if you don't see it, the query-string handshake failed (usually a stale dev server; restart `npm run dev` in `web/`).
+
+### Linking globally (optional)
+
+If you want `create-app-icon` on your `PATH` without typing the full `dist/index.js` path:
+
+```bash
+cd create-app-icon
+npm link
+# now `create-app-icon` works globally
+```
+
+Undo with `npm unlink -g create-app-icon`.
+
+### Typecheck / sanity-check before publishing
+
+```bash
+cd create-app-icon
+npm run typecheck     # tsc --noEmit across src/
+npm run build         # fresh dist/index.js
+node dist/index.js --help
+node dist/index.js --version
+```
+
 ## Publishing `create-app-icon` to npm
 
-The `create-app-icon` package is what `npx create-app-icon` pulls from the npm registry. To cut a release:
+### Version bumping (semver)
+
+The package follows [semver](https://semver.org/). Pick the bump that matches the smallest blast radius of the change:
+
+| Change | Bump | Example |
+| --- | --- | --- |
+| Bug fix, internal refactor, dep bump with no behavior change | `patch` | `0.2.1` → `0.2.2` |
+| New flag, new feature, new supported Expo config layout, anything additive and backward-compatible | `minor` | `0.2.1` → `0.3.0` |
+| Removed / renamed flag, changed default behavior, dropped Node version support, anything that could break an existing user's workflow | `major` | `0.2.1` → `1.0.0` |
+
+While we're pre-1.0 (current), a `minor` bump is allowed to carry breaking changes too — but bumping to `0.x.0` instead of `0.x.y` signals users to read the release notes. Once you ship `1.0.0`, stick to the table above strictly.
+
+### Release flow
 
 ```bash
 cd create-app-icon
 
-# 1. Sanity-check the name is still available (404 = free, 200 = taken).
-npm view create-app-icon
-
-# 2. Log in to npm (one-time per machine).
+# 1. (one-time) log in to npm
 npm login
 
-# 3. Bump the version. Uses semver: patch | minor | major.
-#    This also creates a git tag like `v0.1.1`.
-npm version patch
-
-# 4. Clean build — publishing ships whatever's in dist/.
+# 2. Make sure main is green: typecheck, build, smoke-test locally
+npm run typecheck
 npm run build
+node dist/index.js --help
 
-# 5. Dry run to see exactly what will be uploaded.
+# 3. Bump the version. This edits package.json, commits, and creates
+#    a local `v0.2.1` git tag (no push yet).
+npm version patch         # or: minor / major
+
+# 4. Dry-run to eyeball the file list, size, and metadata npm will upload.
 npm publish --dry-run
 
-# 6. Publish for real. First release needs --access public if the name ends up
-#    scoped (e.g. @jonny/create-app-icon).
+# 5. Push the version commit + tag
+git push && git push --tags
+
+# 6. Publish. For first publish of a scoped name, add --access public.
 npm publish
 ```
 
-**Pre-launch checklist before going wide:**
+`npm publish` runs scripts in this order: `prepublishOnly` → `prepare` → `publish` → `postpublish`. The `files` array in `package.json` is the allowlist of what gets uploaded — currently just `dist/` and `README.md`. The full repo is **not** uploaded.
+
+### After publishing
+
+- Test the registry copy end-to-end, not just your local build:
+  ```bash
+  cd /tmp && mkdir scratch-expo && cd scratch-expo
+  printf '{"expo":{"name":"t","slug":"t"}}' > app.json
+  npx create-app-icon@latest --help
+  ```
+- Write a short release note pointing at the git tag.
+- If a release is bad, `npm unpublish create-app-icon@0.2.1` works within 72 hours of publish; after that, `npm deprecate create-app-icon@0.2.1 "use 0.2.2 — <reason>"` is the right tool.
+
+### Pre-launch checklist (before going wide, not needed for 0.x dogfood releases)
 
 - The hosted API has **no auth and no rate limiting** today. Every `npx create-app-icon` invocation hits `https://ai-app-icons.fly.dev` and spends your OpenAI credits. Before publicizing, add a per-IP limiter (e.g. `slowapi`) or a shared-token gate to `POST /generate` and `POST /assets`.
 - Optionally set up a GitHub Actions workflow that runs `npm publish` on tag push, using an `NPM_TOKEN` secret.
-- Test the published package end-to-end: `cd /tmp && npx create-app-icon@latest` inside a scratch Expo project to confirm the registry copy works (not just the local build).
+- Confirm `create-app-icon` is still free on npm (`npm view create-app-icon`). If someone grabs it first, fall back to a scope like `@yourname/create-app-icon`.
 
 ## Inspiration
 

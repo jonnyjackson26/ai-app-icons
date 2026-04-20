@@ -26,9 +26,13 @@ export default function ExportStep() {
   const router = useRouter();
   const { data, update, reset } = useWizard();
   const iconBase64 = data.iconBase64!;
-  const { assets, expoConfig, backgroundConfig } = data;
+  const { assets, expoConfig, backgroundConfig, backgroundColor, cliCallback, cliToken } = data;
 
   const [configCopied, setConfigCopied] = useState(false);
+  const [cliSendState, setCliSendState] = useState<
+    "idle" | "sending" | "sent" | "error"
+  >("idle");
+  const [cliSendError, setCliSendError] = useState<string | null>(null);
 
   useEffect(() => {
     if (assets) return;
@@ -75,36 +79,117 @@ export default function ExportStep() {
     router.push("?step=describe");
   };
 
+  const handleSendToCli = async () => {
+    if (!cliCallback || !cliToken || !assets || !expoConfig) return;
+    setCliSendState("sending");
+    setCliSendError(null);
+    try {
+      const res = await fetch(cliCallback, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-cli-token": cliToken,
+        },
+        body: JSON.stringify({
+          assets,
+          expo_config: expoConfig,
+          background_color: backgroundColor ?? "",
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(`CLI responded with ${res.status}`);
+      }
+      setCliSendState("sent");
+      setTimeout(() => {
+        try {
+          window.close();
+        } catch {
+          /* no-op: tab wasn't opened by script */
+        }
+      }, 2000);
+    } catch (err) {
+      setCliSendState("error");
+      setCliSendError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const inCliMode = !!cliCallback && !!cliToken;
+
   return (
     <div className="space-y-8">
       <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 text-center">
         Your assets are ready!
       </h2>
 
-      <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        <Button onClick={() => expoConfig && downloadAllAsZip(assets, expoConfig)}>
-          Download All (.zip)
-        </Button>
-        <Button variant="ghost" onClick={handleCreateAnother}>
-          Create another icon
-        </Button>
-      </div>
+      {inCliMode ? (
+        <div className="rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-5 space-y-3">
+          <p className="text-sm text-zinc-700 dark:text-zinc-200">
+            You started this from the{" "}
+            <code className="font-mono text-xs bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+              create-app-icon
+            </code>{" "}
+            CLI. Send these assets back so it can wire them into your Expo
+            project.
+          </p>
+          {cliSendState === "sent" ? (
+            <p className="text-sm font-medium text-green-700 dark:text-green-300">
+              Sent! You can close this tab — your terminal will take over.
+            </p>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+              <Button
+                onClick={handleSendToCli}
+                disabled={cliSendState === "sending"}
+              >
+                {cliSendState === "sending" ? "Sending..." : "Send to your CLI"}
+              </Button>
+              {cliSendState === "error" && (
+                <>
+                  <span className="text-sm text-red-600 dark:text-red-400">
+                    Couldn&apos;t reach the CLI ({cliSendError}).
+                  </span>
+                  <Button
+                    variant="ghost"
+                    onClick={() =>
+                      expoConfig && downloadAllAsZip(assets, expoConfig)
+                    }
+                  >
+                    Download .zip instead
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button onClick={() => expoConfig && downloadAllAsZip(assets, expoConfig)}>
+              Download All (.zip)
+            </Button>
+            <Button variant="ghost" onClick={handleCreateAnother}>
+              Create another icon
+            </Button>
+          </div>
 
-      <div className="rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-4 space-y-3">
-        <p className="text-sm text-zinc-700 dark:text-zinc-200">
-          Using GitHub Copilot, Cursor, Claude Code or another AI tool? You can
-          skip the steps below and let your AI assistant handle them for you.
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            /* placeholder */
-          }}
-          className="text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 cursor-pointer"
-        >
-          Get setup instructions for GitHub Copilot, Claude Code...
-        </button>
-      </div>
+          <div className="rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-4 space-y-3">
+            <p className="text-sm text-zinc-700 dark:text-zinc-200">
+              Using GitHub Copilot, Cursor, Claude Code or another AI tool? You
+              can skip the steps below and let your AI assistant handle them
+              for you.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                /* placeholder */
+              }}
+              className="text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 cursor-pointer"
+            >
+              Get setup instructions for GitHub Copilot, Claude Code...
+            </button>
+          </div>
+        </>
+      )}
 
       {grouped.map((group) => (
         <div key={group.platform} className="space-y-3">

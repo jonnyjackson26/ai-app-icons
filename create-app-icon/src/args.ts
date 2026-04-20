@@ -6,9 +6,13 @@ export interface CliArgs {
   output: string;
   configPath: string | null;
   apiUrl: string;
+  webUrl: string;
+  webTimeoutSec: number;
 }
 
 const DEFAULT_API_URL = "https://ai-app-icons.fly.dev";
+const DEFAULT_WEB_URL = "https://ai-app-icons.vercel.app";
+const DEFAULT_WEB_TIMEOUT_SEC = 600;
 
 export function parseArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
@@ -19,6 +23,10 @@ export function parseArgs(argv: string[]): CliArgs {
     output: "./assets",
     configPath: null,
     apiUrl: process.env.AI_APP_ICONS_API_URL || DEFAULT_API_URL,
+    webUrl: stripTrailingSlash(
+      process.env.AI_APP_ICONS_WEB_URL || DEFAULT_WEB_URL,
+    ),
+    webTimeoutSec: DEFAULT_WEB_TIMEOUT_SEC,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -50,6 +58,18 @@ export function parseArgs(argv: string[]): CliArgs {
       case "--api-url":
         args.apiUrl = requireValue(argv, ++i, a);
         break;
+      case "--web-url":
+        args.webUrl = stripTrailingSlash(requireValue(argv, ++i, a));
+        break;
+      case "--web-timeout": {
+        const raw = requireValue(argv, ++i, a);
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n <= 0) {
+          throw new Error(`--web-timeout must be a positive number of seconds (got ${raw})`);
+        }
+        args.webTimeoutSec = n;
+        break;
+      }
       default:
         if (a && a.startsWith("-")) {
           throw new Error(`Unknown flag: ${a}`);
@@ -67,6 +87,10 @@ function requireValue(argv: string[], i: number, flag: string): string {
   return v;
 }
 
+function stripTrailingSlash(url: string): string {
+  return url.replace(/\/+$/, "");
+}
+
 export const HELP_TEXT = `create-app-icon — generate AI app icons and wire them into your Expo project.
 
 Usage:
@@ -76,8 +100,11 @@ Options:
   --output <dir>         Where to write PNG assets (default: ./assets)
   --config <file>        Explicit path to Expo config (default: auto-detect)
   --api-url <url>        Override backend URL
-  --web                  Open the browser wizard (coming soon; for now it
-                         prints the URL and exits)
+  --web                  Open the browser wizard; CLI receives the result
+                         via a local loopback callback
+  --web-url <url>        Override the hosted wizard URL
+                         (default: https://ai-app-icons.vercel.app)
+  --web-timeout <sec>    Timeout for the browser flow (default: 600)
   --yes, -y              Skip the final confirmation prompt
   --help, -h             Show this help
   --version, -v          Show version

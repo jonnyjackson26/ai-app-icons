@@ -2,9 +2,13 @@ import { readFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import kleur from "kleur";
-import { ApiClient, ApiError } from "./api.js";
-import { HELP_TEXT, parseArgs } from "./args.js";
-import { classifyExplicit, detectExpoConfig } from "./detect.js";
+import { ApiClient, ApiError, type AssetsResponse } from "./api.js";
+import { HELP_TEXT, parseArgs, type CliArgs } from "./args.js";
+import {
+  classifyExplicit,
+  detectExpoConfig,
+  type DetectedConfig,
+} from "./detect.js";
 import { patchConfig } from "./patchConfig.js";
 import {
   promptBackground,
@@ -12,6 +16,7 @@ import {
   promptDescription,
   promptMode,
 } from "./prompts.js";
+import { runWebFlow } from "./webFlow.js";
 import { writeAssets } from "./writeAssets.js";
 
 async function main(): Promise<void> {
@@ -23,19 +28,6 @@ async function main(): Promise<void> {
   }
   if (args.version) {
     console.log(readVersion());
-    return;
-  }
-
-  // --web: defer the full browser-callback flow; degrade gracefully.
-  if (args.web) {
-    console.log(
-      kleur.yellow(
-        "--web flow isn't available yet. Open the wizard manually:\n  ",
-      ) + kleur.bold("https://ai-app-icons.fly.dev"),
-    );
-    console.log(
-      "  Then download the .zip and drop the contents into ./assets/.\n",
-    );
     return;
   }
 
@@ -53,6 +45,21 @@ async function main(): Promise<void> {
   const relConfig = relative(process.cwd(), config.path) || config.path;
   console.log(kleur.dim(`Found Expo config: ${relConfig}`));
 
+  let result: AssetsResponse;
+  if (args.web) {
+    result = await runWebFlow({
+      webUrl: args.webUrl,
+      timeoutMs: args.webTimeoutSec * 1000,
+    });
+    console.log(kleur.green(`\n  ${result.assets.length} assets received.`));
+  } else {
+    result = await runTerminalFlow(args);
+  }
+
+  await finalizeResult(args, config, relConfig, result);
+}
+
+async function runTerminalFlow(args: CliArgs): Promise<AssetsResponse> {
   const api = new ApiClient(args.apiUrl);
 
   let modes;
@@ -62,7 +69,6 @@ async function main(): Promise<void> {
     fatal(apiErrorMessage(err, args.apiUrl));
   }
 
-  // --- prompts ------------------------------------------------------------
   const description = await promptDescription();
   const mode = await promptMode(modes);
 
@@ -78,15 +84,22 @@ async function main(): Promise<void> {
   const background = await promptBackground();
 
   console.log(kleur.dim("\nGenerating all asset sizes..."));
-  let result;
+  let result: AssetsResponse;
   try {
     result = await api.generateAssets(imageBase64, background);
   } catch (err) {
     fatal(apiErrorMessage(err, args.apiUrl));
   }
   console.log(kleur.green(`  ${result.assets.length} assets generated.`));
+  return result;
+}
 
-  // --- confirm + write ----------------------------------------------------
+async function finalizeResult(
+  args: CliArgs,
+  config: DetectedConfig,
+  relConfig: string,
+  result: AssetsResponse,
+): Promise<void> {
   const outputDir = args.output;
   console.log(kleur.bold("\nAbout to write:"));
   console.log(`  ${result.assets.length} PNGs → ${kleur.cyan(outputDir)}/`);
@@ -105,7 +118,10 @@ async function main(): Promise<void> {
     console.log(kleur.green("  wrote"), relative(process.cwd(), w.path));
   }
 
-  const patch = patchConfig(config, result.expo_config as { expo: Record<string, unknown> });
+  const patch = patchConfig(
+    config,
+    result.expo_config as { expo: Record<string, unknown> },
+  );
   if (patch.manual) {
     console.log();
     console.log(
@@ -123,7 +139,9 @@ async function main(): Promise<void> {
     );
   }
 
-  console.log(kleur.bold().green("\nDone! Try running `expo start` to see your new icon."));
+  console.log(
+    kleur.bold().green("\nDone! Try running `expo start` to see your new icon."),
+  );
 }
 
 function apiErrorMessage(err: unknown, apiUrl: string): string {

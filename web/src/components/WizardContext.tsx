@@ -15,6 +15,8 @@ export interface WizardData {
   expoConfig: Record<string, unknown> | null;
   backgroundColor: string | null;
   error: string | null;
+  cliCallback: string | null;
+  cliToken: string | null;
 }
 
 const initialData: WizardData = {
@@ -31,6 +33,8 @@ const initialData: WizardData = {
   expoConfig: null,
   backgroundColor: null,
   error: null,
+  cliCallback: null,
+  cliToken: null,
 };
 
 interface WizardContextValue {
