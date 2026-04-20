@@ -15,6 +15,7 @@ from PIL import Image
 from ai_app_icons import __version__
 from ai_app_icons.assets import ASSETS, build_expo_config, generate_all_assets
 from ai_app_icons.icon_gen import edit_icon, generate_icon
+from ai_app_icons.modes import DEFAULT_MODE_ID, MODES
 
 from .schemas import (
     AssetFile,
@@ -25,6 +26,7 @@ from .schemas import (
     GenerateRequest,
     HealthResponse,
     ImageResponse,
+    ModeInfo,
 )
 
 router = APIRouter()
@@ -156,6 +158,20 @@ async def assets(req: AssetsRequest):
         background_color=bg_color,
         expo_config=expo_config,
     )
+
+
+@router.get("/modes", response_model=list[ModeInfo])
+async def modes():
+    """List available style modes for icon generation."""
+    return [
+        ModeInfo(
+            id=m.id,
+            name=m.name,
+            description=m.description,
+            is_default=m.id == DEFAULT_MODE_ID,
+        )
+        for m in MODES.values()
+    ]
 
 
 @router.get("/backgrounds", response_model=list[BackgroundTypeInfo])

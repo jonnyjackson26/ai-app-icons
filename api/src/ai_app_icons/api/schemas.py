@@ -130,6 +130,14 @@ class BackgroundTypeInfo(BaseModel):
     optional_fields: list[str]
 
 
+class ModeInfo(BaseModel):
+    """Info about an available style mode."""
+    id: str
+    name: str
+    description: str
+    is_default: bool
+
+
 class HealthResponse(BaseModel):
     status: str = "ok"
     version: str

@@ -2,7 +2,7 @@
 
 Generate mobile app icon assets using AI. Describe your icon in plain English, refine it through conversation, and export all the sizes you need for Expo/React Native.
 
-Available as a **CLI**, a **Python library**, a **REST API**, and a **web app**.
+Available as an **`npx` command for Expo projects**, a **terminal CLI**, a **Python library**, a **REST API**, and a **web app**.
 
 ## Project structure
 
@@ -24,6 +24,13 @@ ai-app-icons/
       app/                     # App Router (layout, page)
       components/              # Wizard, steps, UI
       lib/                     # API client, types, download helpers
+  create-app-icon/             # npm package — `npx create-app-icon`
+    package.json
+    src/
+      index.ts                 # entrypoint — prompts, orchestration
+      detect.ts                # find app.json / app.config.{js,ts,json}
+      patchConfig.ts           # merge into existing Expo config
+      api.ts prompts.ts args.ts writeAssets.ts deepMerge.ts
   docs/
     deployment.md
 ```
@@ -41,7 +48,18 @@ Create a `.env` file at the repo root with your OpenAI key:
 OPENAI_API_KEY=sk-...
 ```
 
-### CLI
+### `npx create-app-icon` (for Expo projects)
+
+Run this inside an existing Expo project — it prompts for a description, generates the icon + all asset sizes via the hosted API, writes PNGs into `./assets/`, and patches your Expo config (`app.json`, `app.config.json`, `app.config.js`, or `app.config.ts`) in place with a `.bak` backup.
+
+```bash
+cd path/to/your-expo-app
+npx create-app-icon
+```
+
+Calls `https://ai-app-icons.fly.dev` by default; override with `--api-url` or `AI_APP_ICONS_API_URL`. See [create-app-icon/README.md](create-app-icon/README.md) for all flags.
+
+### CLI (Python, interactive)
 
 ```bash
 cd api && pip install -e ".[cli]"
@@ -136,6 +154,40 @@ If you add, rename, or remove a mode, update **both** files. The id strings must
 ## Deployment
 
 See [docs/deployment.md](docs/deployment.md) — API on Fly.io, web app on Vercel.
+
+## Publishing `create-app-icon` to npm
+
+The `create-app-icon` package is what `npx create-app-icon` pulls from the npm registry. To cut a release:
+
+```bash
+cd create-app-icon
+
+# 1. Sanity-check the name is still available (404 = free, 200 = taken).
+npm view create-app-icon
+
+# 2. Log in to npm (one-time per machine).
+npm login
+
+# 3. Bump the version. Uses semver: patch | minor | major.
+#    This also creates a git tag like `v0.1.1`.
+npm version patch
+
+# 4. Clean build — publishing ships whatever's in dist/.
+npm run build
+
+# 5. Dry run to see exactly what will be uploaded.
+npm publish --dry-run
+
+# 6. Publish for real. First release needs --access public if the name ends up
+#    scoped (e.g. @jonny/create-app-icon).
+npm publish
+```
+
+**Pre-launch checklist before going wide:**
+
+- The hosted API has **no auth and no rate limiting** today. Every `npx create-app-icon` invocation hits `https://ai-app-icons.fly.dev` and spends your OpenAI credits. Before publicizing, add a per-IP limiter (e.g. `slowapi`) or a shared-token gate to `POST /generate` and `POST /assets`.
+- Optionally set up a GitHub Actions workflow that runs `npm publish` on tag push, using an `NPM_TOKEN` secret.
+- Test the published package end-to-end: `cd /tmp && npx create-app-icon@latest` inside a scratch Expo project to confirm the registry copy works (not just the local build).
 
 ## Inspiration
 
