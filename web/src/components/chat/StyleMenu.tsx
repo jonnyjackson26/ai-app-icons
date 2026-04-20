@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { MODES } from "@/lib/generationModes";
 
 const SKIP_ID = "__skip__";
@@ -63,7 +64,7 @@ export default function StyleMenu({ value, onChange }: StyleMenuProps) {
       </button>
 
       {open && (
-        <div className="absolute bottom-full mb-2 left-0 w-64 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden z-10">
+        <div className="absolute bottom-full mb-2 left-0 w-72 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden z-10">
           {MODES.map((m) => (
             <button
               key={m.id}
@@ -72,18 +73,27 @@ export default function StyleMenu({ value, onChange }: StyleMenuProps) {
                 onChange(m.id);
                 setOpen(false);
               }}
-              className={`w-full text-left px-3 py-2 transition-colors cursor-pointer ${
+              className={`flex w-full items-center gap-3 text-left px-3 py-2 transition-colors cursor-pointer ${
                 value === m.id
                   ? "bg-blue-50 dark:bg-blue-950"
                   : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
               }`}
             >
-              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                {m.name}
-              </p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                {m.description}
-              </p>
+              <Image
+                src={m.image}
+                alt=""
+                width={40}
+                height={40}
+                className="h-10 w-10 shrink-0 rounded-md object-cover ring-1 ring-zinc-200 dark:ring-zinc-700"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                  {m.name}
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  {m.description}
+                </p>
+              </div>
             </button>
           ))}
           <button

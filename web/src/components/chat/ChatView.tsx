@@ -218,28 +218,32 @@ export default function ChatView() {
         : null;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 w-full">
+    <div className="relative flex-1 min-h-0 w-full">
       <MessageList messages={data.messages} loadingLabel={loadingLabel} />
 
-      <div className="shrink-0 pt-2 border-t border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/70 backdrop-blur">
-        <Suggestions
-          hasIcon={hasIcon}
-          onPickPrompt={onPickPrompt}
-          onPickBackground={onPickBackground}
-          onAlreadyHaveIcon={onAlreadyHaveIcon}
-        />
-        <Composer
-          text={text}
-          onTextChange={setText}
-          mode={data.mode}
-          onModeChange={(m) => update({ mode: m })}
-          attachedImage={attachedImage}
-          attachedName={attachedName}
-          onAttach={attachLocal}
-          onClearAttachment={clearAttachment}
-          onSend={onSend}
-          sending={sending}
-        />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col">
+        <div className="pointer-events-auto relative z-10">
+          <Suggestions
+            hasIcon={hasIcon}
+            onPickPrompt={onPickPrompt}
+            onPickBackground={onPickBackground}
+            onAlreadyHaveIcon={onAlreadyHaveIcon}
+          />
+        </div>
+        <div className="pointer-events-auto relative z-20">
+          <Composer
+            text={text}
+            onTextChange={setText}
+            mode={data.mode}
+            onModeChange={(m) => update({ mode: m })}
+            attachedImage={attachedImage}
+            attachedName={attachedName}
+            onAttach={attachLocal}
+            onClearAttachment={clearAttachment}
+            onSend={onSend}
+            sending={sending}
+          />
+        </div>
         <input
           ref={fileRef}
           type="file"

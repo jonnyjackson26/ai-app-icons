@@ -46,29 +46,60 @@ export default function Suggestions({
           <ChipSkeleton />
         </>
       )}
-      <Chip label={thirdLabel} onClick={onThirdClick} emphasis />
+      <Chip
+        label={thirdLabel}
+        onClick={onThirdClick}
+        variant={hasIcon ? "glowing" : "emphasis"}
+      />
     </div>
   );
 }
 
+type ChipVariant = "default" | "emphasis" | "glowing";
+
 function Chip({
   label,
   onClick,
-  emphasis = false,
+  variant = "default",
 }: {
   label: string;
   onClick: () => void;
-  emphasis?: boolean;
+  variant?: ChipVariant;
 }) {
+  if (variant === "glowing") {
+    // Outer wrapper = animated conic/linear gradient; inner button sits on
+    // top with a 2px gap, so only the border shows the animated gradient.
+    return (
+      <span
+        className="relative inline-flex p-[2px] rounded-full"
+        style={{
+          backgroundImage:
+            "linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #f59e0b, #3b82f6)",
+          backgroundSize: "300% 100%",
+          animation: "gradient-border-shift 3s ease-in-out infinite",
+        }}
+      >
+        <button
+          type="button"
+          onClick={onClick}
+          className="rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer bg-white text-zinc-900 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+        >
+          {label}
+        </button>
+      </span>
+    );
+  }
+
+  const styles =
+    variant === "emphasis"
+      ? "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900 dark:hover:bg-blue-950/70"
+      : "bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-800";
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
-        emphasis
-          ? "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900 dark:hover:bg-blue-950/70"
-          : "bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-800"
-      }`}
+      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${styles}`}
     >
       {label}
     </button>

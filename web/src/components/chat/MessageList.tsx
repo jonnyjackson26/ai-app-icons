@@ -17,7 +17,7 @@ export default function MessageList({ messages, loadingLabel }: MessageListProps
   }, [messages, loadingLabel]);
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6">
+    <div className="absolute inset-0 overflow-y-auto px-4 pt-6 pb-56">
       <div className="max-w-2xl mx-auto space-y-4">
         {messages.map((m) => (
           <Message key={m.id} message={m} />
