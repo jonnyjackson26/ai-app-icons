@@ -34,7 +34,7 @@ export default function Suggestions({
   const onThirdClick = hasIcon ? onPickBackground : onAlreadyHaveIcon;
 
   return (
-    <div className="flex flex-wrap gap-2 px-4 pb-2 max-w-2xl mx-auto w-full">
+    <div className="grid grid-cols-3 gap-2 px-4 pb-2 max-w-2xl mx-auto w-full">
       {picks ? (
         <>
           <Chip label={picks[0]} onClick={() => onPickPrompt(picks[0])} />
@@ -57,6 +57,9 @@ export default function Suggestions({
 
 type ChipVariant = "default" | "emphasis" | "glowing";
 
+const CHIP_BUTTON_BASE =
+  "w-full h-full rounded-2xl px-4 py-3 text-sm font-medium text-center leading-snug transition-colors cursor-pointer";
+
 function Chip({
   label,
   onClick,
@@ -67,24 +70,34 @@ function Chip({
   variant?: ChipVariant;
 }) {
   if (variant === "glowing") {
-    // Outer wrapper = animated conic/linear gradient; inner button sits on
-    // top with a 2px gap, so only the border shows the animated gradient.
+    // Outer wrapper has animated gradient border + breathing scale/glow.
+    // Inner button sits on top with a 2px gap so the animated gradient shows
+    // through as the border.
     return (
-      <span
-        className="relative inline-flex p-[2px] rounded-full"
-        style={{
-          backgroundImage:
-            "linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #f59e0b, #3b82f6)",
-          backgroundSize: "300% 100%",
-          animation: "gradient-border-shift 3s ease-in-out infinite",
-        }}
-      >
+      <span className="glowing-chip-wrapper relative inline-flex w-full h-full p-[2px] rounded-2xl">
         <button
           type="button"
           onClick={onClick}
-          className="rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer bg-white text-zinc-900 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+          className={`${CHIP_BUTTON_BASE} group font-semibold bg-white text-zinc-900 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800`}
         >
-          {label}
+          <span className="inline-flex items-center justify-center gap-1.5">
+            <span>{label}</span>
+            <svg
+              className="chip-arrow shrink-0 motion-safe:animate-[chip-arrow-nudge_1.4s_ease-in-out_infinite] group-hover:translate-x-0.5 transition-transform"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="13 6 19 12 13 18" />
+            </svg>
+          </span>
         </button>
       </span>
     );
@@ -99,7 +112,7 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${styles}`}
+      className={`${CHIP_BUTTON_BASE} ${styles}`}
     >
       {label}
     </button>
@@ -110,7 +123,7 @@ function ChipSkeleton() {
   return (
     <div
       aria-hidden
-      className="rounded-full h-7 w-40 bg-zinc-100 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 animate-pulse"
+      className="rounded-2xl h-full min-h-[60px] w-full bg-zinc-100 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 animate-pulse"
     />
   );
 }

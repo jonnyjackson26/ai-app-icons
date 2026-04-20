@@ -25,17 +25,20 @@ export default function Message({ message }: { message: ChatMessage }) {
   }
 
   if (message.role === "assistant" && message.kind === "icon") {
+    if (!message.caption) {
+      return (
+        <div className="flex justify-start">
+          <IconPreview base64={message.iconBase64} size="md" />
+        </div>
+      );
+    }
     return (
       <div className="flex justify-start">
         <div className="max-w-[85%] space-y-2">
-          <div className="rounded-2xl rounded-tl-sm bg-zinc-100 dark:bg-zinc-800 p-3">
-            <IconPreview base64={message.iconBase64} size="md" />
-          </div>
-          {message.caption && (
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 px-1">
-              {message.caption}
-            </p>
-          )}
+          <IconPreview base64={message.iconBase64} size="md" />
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 px-1">
+            {message.caption}
+          </p>
         </div>
       </div>
     );

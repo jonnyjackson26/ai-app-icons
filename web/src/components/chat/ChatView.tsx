@@ -28,6 +28,18 @@ export default function ChatView() {
   const welcomeIdRef = useRef<string | null>(null);
   const welcomeStartedRef = useRef(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const promptStreamTimerRef = useRef<number | null>(null);
+
+  const cancelPromptStream = useCallback(() => {
+    if (promptStreamTimerRef.current !== null) {
+      window.clearInterval(promptStreamTimerRef.current);
+      promptStreamTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => cancelPromptStream();
+  }, [cancelPromptStream]);
 
   // Kick off the welcome stream once on mount if the chat is empty.
   useEffect(() => {
@@ -66,7 +78,37 @@ export default function ChatView() {
 
   const hasIcon = !!data.iconBase64;
 
-  const onPickPrompt = useCallback((p: string) => setText(p), []);
+  const onPickPrompt = useCallback(
+    (p: string) => {
+      cancelPromptStream();
+
+      const prefersReducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      if (prefersReducedMotion) {
+        setText(p);
+        return;
+      }
+
+      setText("");
+      let cursor = 0;
+      const CHARS_PER_TICK = 2;
+      promptStreamTimerRef.current = window.setInterval(() => {
+        cursor = Math.min(cursor + CHARS_PER_TICK, p.length);
+        setText(p.slice(0, cursor));
+        if (cursor >= p.length) cancelPromptStream();
+      }, 18);
+    },
+    [cancelPromptStream],
+  );
+
+  const handleTextChange = useCallback(
+    (next: string) => {
+      cancelPromptStream();
+      setText(next);
+    },
+    [cancelPromptStream],
+  );
 
   const onPickBackground = useCallback(() => {
     router.push("?step=background");
@@ -137,6 +179,7 @@ export default function ChatView() {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
 
+    cancelPromptStream();
     const op: "generate" | "refine" =
       attachedImage || data.iconBase64 ? "refine" : "generate";
     setSending(true);
@@ -204,6 +247,7 @@ export default function ChatView() {
     data.iconBase64,
     data.mode,
     appendMessage,
+    cancelPromptStream,
     clearAttachment,
     update,
     appendAssistantIcon,
@@ -233,7 +277,7 @@ export default function ChatView() {
         <div className="pointer-events-auto relative z-20">
           <Composer
             text={text}
-            onTextChange={setText}
+            onTextChange={handleTextChange}
             mode={data.mode}
             onModeChange={(m) => update({ mode: m })}
             attachedImage={attachedImage}
