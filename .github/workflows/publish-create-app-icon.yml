@@ -1,0 +1,76 @@
+name: Publish create-app-icon
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'create-app-icon/**'
+      - '.github/workflows/publish-create-app-icon.yml'
+
+jobs:
+  publish:
+    name: Bump version and publish to npm
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    permissions:
+      contents: write
+      id-token: write
+    defaults:
+      run:
+        working-directory: create-app-icon
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm (OIDC trusted publishing needs >=11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # Sync package.json to the highest of (local, npm-latest) BEFORE the
+      # patch bump. Protects against the case where a previous run's
+      # `git push` failed but the publish succeeded — without this, we'd
+      # re-bump to an already-published version and the publish would fail.
+      - name: Sync to at-least-npm-latest
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          published=$(npm view create-app-icon version 2>/dev/null || echo "0.0.0")
+          highest=$(printf "%s\n%s\n" "$pkg" "$published" | sort -V | tail -1)
+          echo "package.json: $pkg"
+          echo "npm latest:   $published"
+          echo "highest:      $highest"
+          if [ "$highest" != "$pkg" ]; then
+            echo "Syncing package.json to $highest (uncommitted, just a file edit)."
+            npm version "$highest" --no-git-tag-version --allow-same-version
+          fi
+
+      - name: Bump patch version
+        run: npm version patch -m "bump create-app-icon to %s [skip ci]"
+
+      - name: Publish to npm
+        run: npm publish --access public
+
+      # Rebase in case another commit landed while we were building.
+      # Then push; --follow-tags also pushes the new version tag.
+      - name: Push version bump
+        working-directory: .
+        run: |
+          git pull --rebase origin main
+          git push --follow-tags

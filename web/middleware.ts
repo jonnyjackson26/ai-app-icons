@@ -1,7 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-// Routes that should never be gated (even when auth is enabled).
+// Paths that require a logged-in user when auth is enabled.
+// Everything else (including `/`) renders for anonymous visitors; unauthed
+// users hitting /generate or /edit get a 401 from the API, and ChatView
+// shows an inline "Sign in" CTA.
+const PROTECTED_PREFIXES = ["/billing"];
+
+// Paths that should never be gated (even when auth is enabled).
 const PUBLIC_PREFIXES = [
   "/login",
   "/auth",
@@ -20,13 +26,10 @@ export async function middleware(request: NextRequest) {
 
   const { response, user, authEnabled } = await updateSession(request);
 
-  // Self-host mode: auth disabled → never gate anything.
   if (!authEnabled) return response;
 
-  // Auth enabled: require login for every app route. This includes `/` so the
-  // CLI handoff (`/?cli_callback=...`) naturally redirects to login first and
-  // preserves the wizard params via ?next.
-  if (!user) {
+  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
+  if (isProtected && !user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", pathname + request.nextUrl.search);

@@ -1,6 +1,6 @@
 {
   "name": "create-app-icon",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generate AI app icons and wire them into your Expo project in one command.",
   "license": "MIT",
   "type": "module",
