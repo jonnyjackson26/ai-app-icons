@@ -22,16 +22,30 @@ export default function Message({ message }: { message: ChatMessage }) {
           )}
           {message.cta && (
             <div className="mt-2">
-              <Link
-                href={message.cta.href}
-                className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                  isError
-                    ? "bg-red-600 text-white hover:bg-red-700"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-              >
-                {message.cta.label}
-              </Link>
+              {message.cta.onClick ? (
+                <button
+                  type="button"
+                  onClick={message.cta.onClick}
+                  className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                    isError
+                      ? "bg-red-600 text-white hover:bg-red-700"
+                      : "bg-blue-600 text-white hover:bg-blue-700"
+                  }`}
+                >
+                  {message.cta.label}
+                </button>
+              ) : message.cta.href ? (
+                <Link
+                  href={message.cta.href}
+                  className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    isError
+                      ? "bg-red-600 text-white hover:bg-red-700"
+                      : "bg-blue-600 text-white hover:bg-blue-700"
+                  }`}
+                >
+                  {message.cta.label}
+                </Link>
+              ) : null}
             </div>
           )}
         </div>

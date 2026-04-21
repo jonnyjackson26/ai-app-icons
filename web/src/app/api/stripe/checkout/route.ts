@@ -49,8 +49,8 @@ export async function POST(request: NextRequest) {
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${siteUrl}/billing?status=success`,
-    cancel_url: `${siteUrl}/billing?status=canceled`,
+    success_url: `${siteUrl}/?billing=success`,
+    cancel_url: `${siteUrl}/?billing=canceled`,
     client_reference_id: user.id,
     metadata: { supabase_user_id: user.id, tier },
     subscription_data: {

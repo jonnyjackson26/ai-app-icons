@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/browser";
+import { useModals } from "./ModalProvider";
 
 interface Profile {
   tier: string;
@@ -12,24 +12,25 @@ interface Profile {
 
 // Shown in the header. Three states:
 //  - Auth disabled (self-host): render nothing.
-//  - Auth enabled, logged out: "Sign in" button.
-//  - Auth enabled, logged in: tier chip + menu with usage + sign out.
+//  - Auth enabled, logged out: "Sign in" button that opens AuthModal.
+//  - Auth enabled, logged in: tier chip + dropdown menu.
 export default function UserBadge() {
   const authEnabled = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
   const [email, setEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
+  const { openAuth, openBilling } = useModals();
 
   useEffect(() => {
     if (!authEnabled) {
-      console.log("[UserBadge] auth disabled (no NEXT_PUBLIC_SUPABASE_URL)");
+      console.log("[UserBadge] auth disabled");
       return;
     }
     const supabase = createClient();
     console.log("[UserBadge] mounted, checking auth state");
-
     let cancelled = false;
+
     async function load(evt?: string) {
       const { data, error } = await supabase.auth.getUser();
       console.log(
@@ -87,19 +88,19 @@ export default function UserBadge() {
     const supabase = createClient();
     await supabase.auth.signOut();
     setOpen(false);
-    window.location.reload();
   }
 
   if (!authEnabled) return null;
 
   if (!email) {
     return (
-      <Link
-        href="/login"
-        className="rounded-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+      <button
+        type="button"
+        onClick={() => openAuth("sign-in")}
+        className="rounded-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
       >
         Sign in
-      </Link>
+      </button>
     );
   }
 
@@ -111,9 +112,9 @@ export default function UserBadge() {
         : "Free";
   const usageLabel =
     profile && profile.limit !== null
-      ? `${profile.used}/${profile.limit} this week`
+      ? `${profile.used}/${profile.limit}`
       : profile
-        ? `${profile.used} this week`
+        ? `${profile.used}`
         : "";
 
   return (
@@ -136,13 +137,16 @@ export default function UserBadge() {
               {email}
             </p>
           </div>
-          <Link
-            href="/billing"
-            onClick={() => setOpen(false)}
-            className="block px-3 py-2 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              openBilling("default");
+            }}
+            className="block w-full text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
           >
             Billing & plan
-          </Link>
+          </button>
           <button
             type="button"
             onClick={signOut}

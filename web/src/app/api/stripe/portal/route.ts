@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
   const session = await getStripe().billingPortal.sessions.create({
     customer: profile.stripe_customer_id,
-    return_url: `${siteUrl}/billing`,
+    return_url: `${siteUrl}/`,
   });
 
   return NextResponse.json({ url: session.url });

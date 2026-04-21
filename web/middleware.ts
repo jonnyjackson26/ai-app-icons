@@ -1,17 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-// Paths that require a logged-in user when auth is enabled.
-// Everything else (including `/`) renders for anonymous visitors; unauthed
-// users hitting /generate or /edit get a 401 from the API, and ChatView
-// shows an inline "Sign in" CTA.
-const PROTECTED_PREFIXES = ["/billing"];
-
-// Paths that should never be gated (even when auth is enabled).
-const PUBLIC_PREFIXES = [
-  "/login",
-  "/auth",
+// Nothing is gated anymore — auth + billing are modals. Middleware exists
+// solely to refresh the Supabase session cookie on each request so server
+// components read a fresh user. Webhooks and static assets are bypassed.
+const BYPASS_PREFIXES = [
   "/api/webhooks",
+  "/auth",
   "/_next",
   "/favicon",
   "/style-examples",
@@ -19,23 +14,10 @@ const PUBLIC_PREFIXES = [
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
+  if (BYPASS_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
-
-  const { response, user, authEnabled } = await updateSession(request);
-
-  if (!authEnabled) return response;
-
-  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
-  if (isProtected && !user) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
-    return NextResponse.redirect(loginUrl);
-  }
-
+  const { response } = await updateSession(request);
   return response;
 }
 

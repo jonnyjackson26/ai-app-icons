@@ -6,6 +6,7 @@ import MessageList from "./MessageList";
 import Composer from "./Composer";
 import Suggestions from "./Suggestions";
 import { useWizard } from "@/components/WizardContext";
+import { useModals } from "@/components/ModalProvider";
 import {
   AuthRequiredError,
   QuotaExceededError,
@@ -23,6 +24,7 @@ const WELCOME =
 export default function ChatView() {
   const router = useRouter();
   const { data, update, appendMessage, updateMessage } = useWizard();
+  const { openAuth, openBilling } = useModals();
 
   const [text, setText] = useState("");
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
@@ -168,7 +170,10 @@ export default function ChatView() {
   );
 
   const appendAssistantError = useCallback(
-    (content: string, cta?: { label: string; href: string }) => {
+    (
+      content: string,
+      cta?: { label: string; href?: string; onClick?: () => void },
+    ) => {
       appendMessage({
         id: newId(),
         role: "assistant",
@@ -244,21 +249,16 @@ export default function ChatView() {
       }
     } catch (err) {
       if (err instanceof QuotaExceededError) {
+        openBilling("default");
         appendAssistantError(
           `You've hit your ${err.tier} plan limit of ${err.limit} AI calls per ${err.windowDays} days. Upgrade to keep generating.`,
-          { label: "See plans", href: "/billing" },
+          { label: "See plans", onClick: () => openBilling("default") },
         );
       } else if (err instanceof AuthRequiredError) {
+        openAuth("sign-in");
         appendAssistantError(
           "Sign in to generate app icons. Your free tier includes 5 AI calls per week.",
-          {
-            label: "Sign in",
-            href: `/login?next=${encodeURIComponent(
-              typeof window !== "undefined"
-                ? window.location.pathname + window.location.search
-                : "/",
-            )}`,
-          },
+          { label: "Sign in", onClick: () => openAuth("sign-in") },
         );
       } else {
         const message =
@@ -281,6 +281,8 @@ export default function ChatView() {
     update,
     appendAssistantIcon,
     appendAssistantError,
+    openAuth,
+    openBilling,
   ]);
 
   const loadingLabel =

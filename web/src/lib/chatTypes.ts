@@ -6,7 +6,7 @@ export type ChatMessage =
       content: string;
       streaming?: boolean;
       tone?: "normal" | "error";
-      cta?: { label: string; href: string };
+      cta?: { label: string; href?: string; onClick?: () => void };
     }
   | {
       id: string;
