@@ -291,7 +291,7 @@ npm publish
 
 The hosted service (`ai-app-icons.fly.dev` + `ai-app-icons.vercel.app`) gates AI usage behind Supabase login with a free tier of 5 calls/week and a $9.99/mo Pro tier. If you'd rather run everything yourself with your own OpenAI key, auth and billing are off by default when the relevant env vars are unset.
 
-**Minimum setup:**
+**Minimum setup (no auth, no billing):**
 
 ```bash
 # api/.env
@@ -311,7 +311,7 @@ AI_APP_ICONS_API_URL=http://localhost:8000 npx create-app-icon
 npx create-app-icon --api-url http://localhost:8000
 ```
 
-The CLI pings `GET /config` before prompting — if your server reports `{ "auth_required": false }`, the login prompt is skipped entirely.
+The CLI probes `GET /config` before running. When the server reports `{ "auth_required": false }`, it uses the terminal flow (no browser). When it reports `{ "auth_required": true }`, it automatically opens the browser wizard — login happens there via Supabase. The CLI itself stores no credentials.
 
 **To run the hosted version yourself** (auth + billing enabled), set these env vars. Full reference in [api/.env.example](api/.env.example) and [web/.env.example](web/.env.example).
 
@@ -320,7 +320,7 @@ The CLI pings `GET /config` before prompting — if your server reports `{ "auth
 | api/    | `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET` |
 | web/    | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_PRO`, `STRIPE_WEBHOOK_SECRET` |
 
-Run [supabase/migrations/0001_auth_and_billing.sql](supabase/migrations/0001_auth_and_billing.sql) against your Supabase project to set up the `profiles`, `cli_api_keys`, and `usage_events` tables.
+Run the SQL files under [supabase/migrations/](supabase/migrations/) in order against your Supabase project to set up the `profiles` and `usage_events` tables.
 
 ## Inspiration
 

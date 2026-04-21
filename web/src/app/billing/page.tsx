@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -84,15 +83,6 @@ export default async function BillingPage() {
           <BillingActions action="portal" />
         </section>
       )}
-
-      <section className="mt-10">
-        <Link
-          href="/billing/cli-keys"
-          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          Manage CLI keys →
-        </Link>
-      </section>
     </div>
   );
 }

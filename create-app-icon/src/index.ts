@@ -9,11 +9,6 @@ import {
   detectExpoConfig,
   type DetectedConfig,
 } from "./detect.js";
-import {
-  deleteCredentials,
-  readCredentials,
-} from "./credentials.js";
-import { runLogin } from "./login.js";
 import { patchConfig } from "./patchConfig.js";
 import {
   promptBackground,
@@ -36,31 +31,21 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (args.subcommand === "logout") {
-    const removed = deleteCredentials();
-    if (removed) {
-      console.log(kleur.green("Signed out. Credentials removed."));
-    } else {
-      console.log(kleur.dim("No credentials on file."));
-    }
-    return;
-  }
-
-  if (args.subcommand === "login") {
-    await runLogin({
-      webUrl: args.webUrl,
-      apiUrl: args.apiUrl,
-      timeoutMs: args.webTimeoutSec * 1000,
-    });
-    return;
-  }
-
   console.log(kleur.bold().cyan("\ncreate-app-icon\n"));
 
-  // Probe server config before prompting the user for a description. If the
-  // server requires auth and we have no credentials, print the login/self-host
-  // prompt and exit.
-  const authToken = await resolveAuth(args);
+  // Probe the backend. If it requires auth, force the browser wizard — that's
+  // where login happens. The terminal flow is only available when the server
+  // doesn't require auth (self-host) because the CLI itself has no way to
+  // mint a JWT.
+  const authRequired = await probeAuthRequired(args.apiUrl);
+  if (authRequired && !args.web) {
+    console.log(
+      kleur.dim(
+        "This backend requires sign-in. Launching the browser wizard...",
+      ),
+    );
+    args.web = true;
+  }
 
   const config = args.configPath
     ? classifyExplicit(args.configPath)
@@ -82,75 +67,28 @@ async function main(): Promise<void> {
     });
     console.log(kleur.green(`\n  ${result.assets.length} assets received.`));
   } else {
-    result = await runTerminalFlow(args, authToken);
+    result = await runTerminalFlow(args);
   }
 
   await finalizeResult(args, config, relConfig, result);
 }
 
 /**
- * Returns a bearer token if auth is required and present, null if auth is
- * not required (self-host), or exits with a prompt if auth is required but
- * credentials are missing.
+ * Returns true if the backend requires auth, false otherwise. On network
+ * errors or missing /config (older self-hosts), assumes no auth — downstream
+ * 401s will surface a clear message.
  */
-async function resolveAuth(args: CliArgs): Promise<string | null> {
-  const probeClient = new ApiClient(args.apiUrl);
-  let authRequired: boolean;
+async function probeAuthRequired(apiUrl: string): Promise<boolean> {
   try {
-    const config = await probeClient.getConfig();
-    authRequired = config.auth_required;
+    const config = await new ApiClient(apiUrl).getConfig();
+    return !!config.auth_required;
   } catch {
-    // /config probe failed. Could be a self-host without the endpoint, or
-    // a network issue. Assume no auth and let downstream 401s drive the UX.
-    return null;
+    return false;
   }
-
-  if (!authRequired) return null;
-
-  const creds = readCredentials();
-  if (creds?.token) return creds.token;
-
-  printLoginOrSelfHost(args);
-  process.exit(1);
 }
 
-function printLoginOrSelfHost(args: CliArgs): void {
-  console.log();
-  console.log(
-    kleur.bold(
-      "This uses AI to create an app icon, please sign in or self-host.",
-    ),
-  );
-  console.log();
-  console.log(
-    "  " + kleur.cyan("Sign in:   ") + "npx create-app-icon login",
-  );
-  console.log(
-    "  " +
-      kleur.cyan("Self-host: ") +
-      "https://github.com/Jonathan/ai-app-icons#self-hosting",
-  );
-  console.log();
-  if (!args.apiUrlOverridden) {
-    console.log(
-      kleur.dim(
-        "Pointing at the default hosted API (" + args.apiUrl + ").",
-      ),
-    );
-    console.log(
-      kleur.dim(
-        "Override with --api-url <url> or AI_APP_ICONS_API_URL to use your own backend.",
-      ),
-    );
-  }
-  console.log();
-}
-
-async function runTerminalFlow(
-  args: CliArgs,
-  authToken: string | null,
-): Promise<AssetsResponse> {
-  const api = new ApiClient(args.apiUrl, authToken);
+async function runTerminalFlow(args: CliArgs): Promise<AssetsResponse> {
+  const api = new ApiClient(args.apiUrl);
 
   let modes;
   try {
@@ -238,8 +176,9 @@ function apiErrorMessage(err: unknown, apiUrl: string): string {
   if (err instanceof ApiError) {
     if (err.status === 401) {
       return (
-        "Authentication failed. Run `npx create-app-icon login` to sign in, " +
-        "or `--api-url <url>` to point at a self-hosted backend."
+        "The backend requires sign-in. Re-run without --api-url to use " +
+        "the hosted wizard, or point --api-url at a self-hosted backend that " +
+        "doesn't require auth."
       );
     }
     if (err.status === 429) {

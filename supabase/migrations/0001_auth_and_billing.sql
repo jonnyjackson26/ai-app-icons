@@ -13,20 +13,6 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
--- Long-lived API keys for the `create-app-icon` CLI. Plaintext is shown once at mint
--- time and never stored; we keep a sha256 hash for lookups.
-create table if not exists public.cli_api_keys (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  token_hash text not null unique,
-  label text,
-  created_at timestamptz not null default now(),
-  last_used_at timestamptz,
-  revoked_at timestamptz
-);
-
-create index if not exists cli_api_keys_user_idx on public.cli_api_keys (user_id);
-
 -- One row per successful OpenAI call (generate or edit). Rolling 7-day counts
 -- drive quota enforcement; exports are not tracked.
 create table if not exists public.usage_events (
@@ -76,20 +62,11 @@ create trigger profiles_touch_updated_at
 
 -- RLS: users can read their own rows; service role bypasses for writes.
 alter table public.profiles enable row level security;
-alter table public.cli_api_keys enable row level security;
 alter table public.usage_events enable row level security;
 
 drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own" on public.profiles
   for select using (auth.uid() = user_id);
-
-drop policy if exists "cli_api_keys_select_own" on public.cli_api_keys;
-create policy "cli_api_keys_select_own" on public.cli_api_keys
-  for select using (auth.uid() = user_id);
-
-drop policy if exists "cli_api_keys_delete_own" on public.cli_api_keys;
-create policy "cli_api_keys_delete_own" on public.cli_api_keys
-  for delete using (auth.uid() = user_id);
 
 drop policy if exists "usage_events_select_own" on public.usage_events;
 create policy "usage_events_select_own" on public.usage_events

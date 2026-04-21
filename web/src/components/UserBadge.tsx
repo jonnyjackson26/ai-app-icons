@@ -143,13 +143,6 @@ export default function UserBadge() {
           >
             Billing & plan
           </Link>
-          <Link
-            href="/billing/cli-keys"
-            onClick={() => setOpen(false)}
-            className="block px-3 py-2 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-          >
-            CLI keys
-          </Link>
           <button
             type="button"
             onClick={signOut}

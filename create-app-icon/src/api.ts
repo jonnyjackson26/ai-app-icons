@@ -43,10 +43,7 @@ export class ApiError extends Error {
 }
 
 export class ApiClient {
-  constructor(
-    private baseUrl: string,
-    private authToken: string | null = null,
-  ) {}
+  constructor(private baseUrl: string) {}
 
   async getConfig(): Promise<ServerConfig> {
     return this.request<ServerConfig>("GET", "/config");
@@ -76,7 +73,6 @@ export class ApiClient {
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = {};
     if (body) headers["Content-Type"] = "application/json";
-    if (this.authToken) headers["Authorization"] = `Bearer ${this.authToken}`;
 
     const res = await fetch(`${this.baseUrl}${path}`, {
       method,
