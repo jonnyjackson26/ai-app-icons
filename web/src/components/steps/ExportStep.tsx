@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import { generateAssets } from "@/lib/api";
 import { downloadAllAsZip, downloadBase64Image } from "@/lib/download";
 import { useWizard } from "@/components/WizardContext";
-import { stepHref } from "@/lib/wizardNav";
 
 const PLATFORM_ORDER = ["general", "ios", "android", "web"] as const;
 const PLATFORM_LABELS: Record<string, string> = {
@@ -24,9 +22,7 @@ const VARIANT_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function ExportStep() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { data, update, reset } = useWizard();
+  const { data, update, reset, setStep } = useWizard();
   const iconBase64 = data.iconBase64!;
   const {
     assets,
@@ -65,10 +61,10 @@ export default function ExportStep() {
         update({
           error: err instanceof Error ? err.message : "Asset generation failed",
         });
-        router.push(stepHref(searchParams, "background"));
+        setStep("background");
       });
     return () => ac.abort();
-  }, [assets, iconBase64, backgroundConfig, router, searchParams, update]);
+  }, [assets, iconBase64, backgroundConfig, setStep, update]);
 
   if (!assets) {
     return <Spinner message="Generating all asset sizes..." />;
@@ -88,8 +84,8 @@ export default function ExportStep() {
   };
 
   const handleCreateAnother = () => {
+    // reset() already flips currentStep back to "chat" and preserves CLI params.
     reset();
-    router.push(stepHref(searchParams, "chat"));
   };
 
   const handleSendToCli = async () => {

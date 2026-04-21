@@ -6,6 +6,9 @@ import { DEFAULT_MODE_ID } from "@/lib/generationModes";
 import type { ChatMessage } from "@/lib/chatTypes";
 import type { AssetFile, BackgroundConfig } from "@/lib/types";
 
+export const STEPS = ["chat", "background", "export"] as const;
+export type Step = (typeof STEPS)[number];
+
 export interface WizardData {
   mode: string;
   iconBase64: string | null;
@@ -19,6 +22,7 @@ export interface WizardData {
   cliToken: string | null;
   cliProjectName: string | null;
   messages: ChatMessage[];
+  currentStep: Step;
 }
 
 const initialData: WizardData = {
@@ -38,6 +42,7 @@ const initialData: WizardData = {
   cliToken: null,
   cliProjectName: null,
   messages: [],
+  currentStep: "chat",
 };
 
 interface WizardContextValue {
@@ -47,6 +52,7 @@ interface WizardContextValue {
   appendMessage: (msg: ChatMessage) => void;
   updateMessage: (id: string, patch: Partial<ChatMessage>) => void;
   removeMessage: (id: string) => void;
+  setStep: (step: Step) => void;
 }
 
 const WizardContext = createContext<WizardContextValue | null>(null);
@@ -58,7 +64,16 @@ export function WizardProvider({ children }: { children: React.ReactNode }) {
     setData((prev) => ({ ...prev, ...partial }));
   }, []);
 
-  const reset = useCallback(() => setData(initialData), []);
+  // Preserve CLI session across reset so "Create another icon" doesn't silently
+  // drop the handoff mid-session. Step also resets to chat.
+  const reset = useCallback(() => {
+    setData((prev) => ({
+      ...initialData,
+      cliCallback: prev.cliCallback,
+      cliToken: prev.cliToken,
+      cliProjectName: prev.cliProjectName,
+    }));
+  }, []);
 
   const appendMessage = useCallback((msg: ChatMessage) => {
     setData((prev) => ({ ...prev, messages: [...prev.messages, msg] }));
@@ -83,6 +98,10 @@ export function WizardProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const setStep = useCallback((step: Step) => {
+    setData((prev) => ({ ...prev, currentStep: step }));
+  }, []);
+
   return (
     <WizardContext.Provider
       value={{
@@ -92,6 +111,7 @@ export function WizardProvider({ children }: { children: React.ReactNode }) {
         appendMessage,
         updateMessage,
         removeMessage,
+        setStep,
       }}
     >
       {children}

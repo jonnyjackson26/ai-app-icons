@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import MessageList from "./MessageList";
 import Composer from "./Composer";
 import Suggestions from "./Suggestions";
@@ -16,7 +15,6 @@ import {
 import { newId, type ChatMessage } from "@/lib/chatTypes";
 import { useStreamText } from "@/lib/useStreamText";
 import { createClient } from "@/lib/supabase/browser";
-import { stepHref } from "@/lib/wizardNav";
 
 const WELCOME =
   "Welcome to ai-app-icons!\n" +
@@ -37,9 +35,14 @@ type RequestPayload =
 const RETRY_STORAGE_KEY = "aai_pending_retry_v1";
 
 export default function ChatView() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { data, update, appendMessage, updateMessage, removeMessage } = useWizard();
+  const {
+    data,
+    update,
+    appendMessage,
+    updateMessage,
+    removeMessage,
+    setStep,
+  } = useWizard();
   const { openAuth, openBilling } = useModals();
 
   const [text, setText] = useState("");
@@ -140,8 +143,9 @@ export default function ChatView() {
   );
 
   const onPickBackground = useCallback(() => {
-    router.push(stepHref(searchParams, "background"));
-  }, [router, searchParams]);
+    console.log("[ChatView] onPickBackground → setStep(background)");
+    setStep("background");
+  }, [setStep]);
 
   const readFile = (file: File, onLoad: (base64: string) => void) => {
     const reader = new FileReader();
@@ -163,7 +167,7 @@ export default function ChatView() {
     if (!file || !file.type.startsWith("image/")) return;
     readFile(file, (base64) => {
       update({ iconBase64: base64, editMessage: "", error: null });
-      router.push(stepHref(searchParams, "background"));
+      setStep("background");
     });
   };
 

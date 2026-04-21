@@ -2,7 +2,9 @@
 
 Generate mobile app icon assets using AI. Describe your icon in plain English, refine it through conversation, and export all the sizes you need for Expo/React Native.
 
-Available as an **`npx` command for Expo projects**, a **terminal CLI**, a **Python library**, a **REST API**, and a **web app**.
+Try it by using `npx create-app-icon` in your expo app, or by visiting \[<https://ai-app-icons.vercel.app/>\](<https://ai-app-icons.vercel.app/>). 
+
+Available as an `npx` **command for Expo projects**, a **terminal CLI**, a **Python library**, a **REST API**, and a **web app**.
 
 ## Project structure
 
@@ -77,13 +79,13 @@ API runs at `http://localhost:8000`. Open `/docs` for Swagger UI.
 
 **Optional telemetry (Sentry).** Install with `pip install -e ".[api,telemetry]"` and set `SENTRY_DSN` to your own Sentry project to capture errors, traces, profiles, and logs. With no DSN set, Sentry is not initialized. Tune `SENTRY_TRACES_SAMPLE_RATE` and `SENTRY_PROFILE_SESSION_SAMPLE_RATE` (0.0–1.0) in production to stay within your Sentry quota.
 
-| Method | Endpoint       | Description                                                    |
-| ------ | -------------- | -------------------------------------------------------------- |
-| POST   | `/generate`    | Generate icon from a text description (optional `mode` field)  |
-| POST   | `/edit`        | Edit an existing icon with an instruction                      |
-| POST   | `/assets`      | Generate all 5 asset sizes from an icon                        |
-| GET    | `/backgrounds` | List available background types                                |
-| GET    | `/health`      | Health check                                                   |
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/generate` | Generate icon from a text description (optional `mode` field) |
+| POST | `/edit` | Edit an existing icon with an instruction |
+| POST | `/assets` | Generate all 5 asset sizes from an icon |
+| GET | `/backgrounds` | List available background types |
+| GET | `/health` | Health check |
 
 ### Python library
 
@@ -119,31 +121,31 @@ Open `http://localhost:3000`. To point at a deployed API, set `NEXT_PUBLIC_API_U
 
 When generating an icon, you can pick a visual style. The CLI asks after you enter your description; the web app shows a grid below the prompt textarea; the REST API takes an optional `mode` field on `POST /generate`.
 
-| id                 | Style            | Vibe                                                     |
-| ------------------ | ---------------- | -------------------------------------------------------- |
-| `flat` *(default)* | Flat             | Bold geometric shapes, solid colors, no shadows.         |
-| `ios-liquid-glass` | iOS Liquid Glass | Glossy translucent material with soft refraction.        |
-| `skeuomorphic`     | Skeuomorphic     | Realistic textures, lighting, and materials.             |
-| `minimal`          | Minimal          | Single clean symbol, monochrome, lots of whitespace.     |
-| `illustrative`     | Illustrative     | Warm hand-drawn look with organic shapes.                |
-| `3d`               | 3D               | Rendered 3D object with soft lighting and depth.         |
+| id | Style | Vibe |
+| --- | --- | --- |
+| `flat` *(default)* | Flat | Bold geometric shapes, solid colors, no shadows. |
+| `ios-liquid-glass` | iOS Liquid Glass | Glossy translucent material with soft refraction. |
+| `skeuomorphic` | Skeuomorphic | Realistic textures, lighting, and materials. |
+| `minimal` | Minimal | Single clean symbol, monochrome, lots of whitespace. |
+| `illustrative` | Illustrative | Warm hand-drawn look with organic shapes. |
+| `3d` | 3D | Rendered 3D object with soft lighting and depth. |
 
 Mode definitions live in two places:
 
-- [`api/src/ai_app_icons/modes.py`](api/src/ai_app_icons/modes.py) — **source of truth**, including the style prompt text that gets injected into the icon-generation prompt.
-- [`web/src/lib/generationModes.ts`](web/src/lib/generationModes.ts) — display metadata only (id, name, description) for the web UI, following the same pattern as `backgroundPresets.ts`.
+- `api/src/ai_app_icons/modes.py` — **source of truth**, including the style prompt text that gets injected into the icon-generation prompt.
+- `web/src/lib/generationModes.ts` — display metadata only (id, name, description) for the web UI, following the same pattern as `backgroundPresets.ts`.
 
 If you add, rename, or remove a mode, update **both** files. The id strings must match exactly.
 
 ## Generated assets
 
-| File                | Size      | Background  | Use                      |
-| ------------------- | --------- | ----------- | ------------------------ |
-| `splash.png`        | 1284x2778 | Configured  | Expo splash screen       |
-| `icon.png`          | 1024x1024 | Configured  | App store icon           |
-| `adaptive-icon.png` | 1024x1024 | Configured  | Android adaptive icon    |
-| `splash-icon.png`   | 1024x1024 | Transparent | Expo splash icon (no bg) |
-| `favicon.png`       | 48x48     | Transparent | Web favicon              |
+| File | Size | Background | Use |
+| --- | --- | --- | --- |
+| `splash.png` | 1284x2778 | Configured | Expo splash screen |
+| `icon.png` | 1024x1024 | Configured | App store icon |
+| `adaptive-icon.png` | 1024x1024 | Configured | Android adaptive icon |
+| `splash-icon.png` | 1024x1024 | Transparent | Expo splash icon (no bg) |
+| `favicon.png` | 48x48 | Transparent | Web favicon |
 
 ## Background types
 
@@ -153,11 +155,11 @@ If you add, rename, or remove a mode, update **both** files. The id strings must
 
 ## Deployment
 
-See [docs/deployment.md](docs/deployment.md) — API on Fly.io, web app on Vercel.
+See docs/deployment.md — API on Fly.io, web app on Vercel.
 
 ## Developing `create-app-icon` locally
 
-The package lives in [`create-app-icon/`](create-app-icon/) and is published as a single-file ESM bundle in `dist/`. You don't need to publish to npm (or run `npx`) while iterating — just build and invoke `dist/index.js` directly.
+The package lives in `create-app-icon/` and is published as a single-file ESM bundle in `dist/`. You don't need to publish to npm (or run `npx`) while iterating — just build and invoke `dist/index.js` directly.
 
 ### First-time setup
 
@@ -274,6 +276,7 @@ npm publish
 ### After publishing
 
 - Test the registry copy end-to-end, not just your local build:
+
   ```bash
   cd /tmp && mkdir scratch-expo && cd scratch-expo
   printf '{"expo":{"name":"t","slug":"t"}}' > app.json
@@ -313,14 +316,14 @@ npx create-app-icon --api-url http://localhost:8000
 
 The CLI probes `GET /config` before running. When the server reports `{ "auth_required": false }`, it uses the terminal flow (no browser). When it reports `{ "auth_required": true }`, it automatically opens the browser wizard — login happens there via Supabase. The CLI itself stores no credentials.
 
-**To run the hosted version yourself** (auth + billing enabled), set these env vars. Full reference in [api/.env.example](api/.env.example) and [web/.env.example](web/.env.example).
+**To run the hosted version yourself** (auth + billing enabled), set these env vars. Full reference in api/.env.example and web/.env.example.
 
 | Service | Required env vars |
-|---------|-------------------|
-| api/    | `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET` |
-| web/    | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_PRO`, `STRIPE_WEBHOOK_SECRET` |
+| --- | --- |
+| api/ | `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET` |
+| web/ | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_PRO`, `STRIPE_WEBHOOK_SECRET` |
 
-Run the SQL files under [supabase/migrations/](supabase/migrations/) in order against your Supabase project to set up the `profiles` and `usage_events` tables.
+Run the SQL files under supabase/migrations/ in order against your Supabase project to set up the `profiles` and `usage_events` tables.
 
 ## Inspiration
 

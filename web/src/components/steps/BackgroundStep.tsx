@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import Button from "@/components/ui/Button";
 import BackgroundPreview from "@/components/BackgroundPreview";
 import { PRESETS } from "@/lib/backgroundPresets";
 import { useWizard } from "@/components/WizardContext";
 import type { BackgroundConfig } from "@/lib/types";
-import { stepHref } from "@/lib/wizardNav";
 
 // Keep in sync with api/src/ai_app_icons/constants.py (IOS_DARK_BG).
 const IOS_DARK_BG = "#262427";
@@ -66,9 +64,7 @@ function seedFromConfig(cfg: BackgroundConfig): Seed {
 }
 
 export default function BackgroundStep() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { data, update } = useWizard();
+  const { data, update, setStep } = useWizard();
   const iconBase64 = data.iconBase64!;
 
   const initial = seedFromConfig(data.backgroundConfig);
@@ -87,9 +83,9 @@ export default function BackgroundStep() {
   }, [config, update]);
 
   const handleGenerate = () => {
-    console.log("[BackgroundStep] Generate Assets → export");
+    console.log("[BackgroundStep] Generate Assets → setStep(export)");
     update({ backgroundConfig: config, assets: null });
-    router.push(stepHref(searchParams, "export"));
+    setStep("export");
   };
 
   const activePresetId =

@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { REACHED, type Step } from "@/components/Wizard";
-import { useWizard } from "@/components/WizardContext";
+import { REACHED } from "@/components/Wizard";
+import { useWizard, type Step } from "@/components/WizardContext";
 
 const STEPS = [
   { key: "chat", label: "Create logo" },
@@ -18,7 +17,7 @@ const stepIndex: Record<Step, number> = {
 
 export default function StepIndicator({ current }: { current: Step }) {
   const activeIdx = stepIndex[current];
-  const { data } = useWizard();
+  const { data, setStep } = useWizard();
 
   return (
     <div className="flex items-center justify-center gap-2">
@@ -34,7 +33,6 @@ export default function StepIndicator({ current }: { current: Step }) {
         } else if (completed) {
           circleClass = "bg-blue-600 text-white";
         } else if (reachable) {
-          // forward-reachable but not yet completed — show as outlined link, not a ✓
           circleClass = "border-2 border-blue-500 text-blue-600 dark:text-blue-400 bg-transparent";
         } else {
           circleClass = "bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400";
@@ -45,8 +43,8 @@ export default function StepIndicator({ current }: { current: Step }) {
           isActive || completed
             ? "text-zinc-900 dark:text-zinc-100 font-medium"
             : reachable
-            ? "text-blue-600 dark:text-blue-400"
-            : "text-zinc-400 dark:text-zinc-500"
+              ? "text-blue-600 dark:text-blue-400"
+              : "text-zinc-400 dark:text-zinc-500"
         }`;
 
         const content = (
@@ -61,12 +59,13 @@ export default function StepIndicator({ current }: { current: Step }) {
         return (
           <div key={step.key} className="flex items-center gap-2">
             {clickable ? (
-              <Link
-                href={`?step=${step.key}`}
-                className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+              <button
+                type="button"
+                onClick={() => setStep(step.key)}
+                className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity bg-transparent"
               >
                 {content}
-              </Link>
+              </button>
             ) : (
               <div className="flex items-center gap-2">{content}</div>
             )}
