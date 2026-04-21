@@ -9,6 +9,11 @@ import {
   detectExpoConfig,
   type DetectedConfig,
 } from "./detect.js";
+import {
+  deleteCredentials,
+  readCredentials,
+} from "./credentials.js";
+import { runLogin } from "./login.js";
 import { patchConfig } from "./patchConfig.js";
 import {
   promptBackground,
@@ -31,7 +36,31 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (args.subcommand === "logout") {
+    const removed = deleteCredentials();
+    if (removed) {
+      console.log(kleur.green("Signed out. Credentials removed."));
+    } else {
+      console.log(kleur.dim("No credentials on file."));
+    }
+    return;
+  }
+
+  if (args.subcommand === "login") {
+    await runLogin({
+      webUrl: args.webUrl,
+      apiUrl: args.apiUrl,
+      timeoutMs: args.webTimeoutSec * 1000,
+    });
+    return;
+  }
+
   console.log(kleur.bold().cyan("\ncreate-app-icon\n"));
+
+  // Probe server config before prompting the user for a description. If the
+  // server requires auth and we have no credentials, print the login/self-host
+  // prompt and exit.
+  const authToken = await resolveAuth(args);
 
   const config = args.configPath
     ? classifyExplicit(args.configPath)
@@ -53,14 +82,75 @@ async function main(): Promise<void> {
     });
     console.log(kleur.green(`\n  ${result.assets.length} assets received.`));
   } else {
-    result = await runTerminalFlow(args);
+    result = await runTerminalFlow(args, authToken);
   }
 
   await finalizeResult(args, config, relConfig, result);
 }
 
-async function runTerminalFlow(args: CliArgs): Promise<AssetsResponse> {
-  const api = new ApiClient(args.apiUrl);
+/**
+ * Returns a bearer token if auth is required and present, null if auth is
+ * not required (self-host), or exits with a prompt if auth is required but
+ * credentials are missing.
+ */
+async function resolveAuth(args: CliArgs): Promise<string | null> {
+  const probeClient = new ApiClient(args.apiUrl);
+  let authRequired: boolean;
+  try {
+    const config = await probeClient.getConfig();
+    authRequired = config.auth_required;
+  } catch {
+    // /config probe failed. Could be a self-host without the endpoint, or
+    // a network issue. Assume no auth and let downstream 401s drive the UX.
+    return null;
+  }
+
+  if (!authRequired) return null;
+
+  const creds = readCredentials();
+  if (creds?.token) return creds.token;
+
+  printLoginOrSelfHost(args);
+  process.exit(1);
+}
+
+function printLoginOrSelfHost(args: CliArgs): void {
+  console.log();
+  console.log(
+    kleur.bold(
+      "This uses AI to create an app icon, please sign in or self-host.",
+    ),
+  );
+  console.log();
+  console.log(
+    "  " + kleur.cyan("Sign in:   ") + "npx create-app-icon login",
+  );
+  console.log(
+    "  " +
+      kleur.cyan("Self-host: ") +
+      "https://github.com/Jonathan/ai-app-icons#self-hosting",
+  );
+  console.log();
+  if (!args.apiUrlOverridden) {
+    console.log(
+      kleur.dim(
+        "Pointing at the default hosted API (" + args.apiUrl + ").",
+      ),
+    );
+    console.log(
+      kleur.dim(
+        "Override with --api-url <url> or AI_APP_ICONS_API_URL to use your own backend.",
+      ),
+    );
+  }
+  console.log();
+}
+
+async function runTerminalFlow(
+  args: CliArgs,
+  authToken: string | null,
+): Promise<AssetsResponse> {
+  const api = new ApiClient(args.apiUrl, authToken);
 
   let modes;
   try {
@@ -145,7 +235,22 @@ async function finalizeResult(
 }
 
 function apiErrorMessage(err: unknown, apiUrl: string): string {
-  if (err instanceof ApiError) return `API error (${err.status}): ${err.detail}`;
+  if (err instanceof ApiError) {
+    if (err.status === 401) {
+      return (
+        "Authentication failed. Run `npx create-app-icon login` to sign in, " +
+        "or `--api-url <url>` to point at a self-hosted backend."
+      );
+    }
+    if (err.status === 429) {
+      return (
+        "Quota exceeded for this week. Manage your plan at " +
+        (process.env.AI_APP_ICONS_WEB_URL || "https://ai-app-icons.vercel.app") +
+        "/billing"
+      );
+    }
+    return `API error (${err.status}): ${err.detail}`;
+  }
   if (err instanceof Error) {
     return `Couldn't reach ${apiUrl}: ${err.message}`;
   }

@@ -6,7 +6,12 @@ import MessageList from "./MessageList";
 import Composer from "./Composer";
 import Suggestions from "./Suggestions";
 import { useWizard } from "@/components/WizardContext";
-import { editIcon, generateIcon } from "@/lib/api";
+import {
+  AuthRequiredError,
+  QuotaExceededError,
+  editIcon,
+  generateIcon,
+} from "@/lib/api";
 import { newId, type ChatMessage } from "@/lib/chatTypes";
 import { useStreamText } from "@/lib/useStreamText";
 
@@ -163,13 +168,14 @@ export default function ChatView() {
   );
 
   const appendAssistantError = useCallback(
-    (content: string) => {
+    (content: string, cta?: { label: string; href: string }) => {
       appendMessage({
         id: newId(),
         role: "assistant",
         kind: "text",
         content,
         tone: "error",
+        cta,
       });
     },
     [appendMessage],
@@ -177,11 +183,15 @@ export default function ChatView() {
 
   const onSend = useCallback(async () => {
     const trimmed = text.trim();
-    if (!trimmed || sending) return;
+    if (!trimmed || sending) {
+      console.log("[ChatView] onSend ignored:", { empty: !trimmed, sending });
+      return;
+    }
 
     cancelPromptStream();
     const op: "generate" | "refine" =
       attachedImage || data.iconBase64 ? "refine" : "generate";
+    console.log("[ChatView] onSend →", op, "(text len:", trimmed.length, ")");
     setSending(true);
     setSendingOp(op);
 
@@ -233,9 +243,28 @@ export default function ChatView() {
         }
       }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Something went wrong.";
-      appendAssistantError(message);
+      if (err instanceof QuotaExceededError) {
+        appendAssistantError(
+          `You've hit your ${err.tier} plan limit of ${err.limit} AI calls per ${err.windowDays} days. Upgrade to keep generating.`,
+          { label: "See plans", href: "/billing" },
+        );
+      } else if (err instanceof AuthRequiredError) {
+        appendAssistantError(
+          "Sign in to generate app icons. Your free tier includes 5 AI calls per week.",
+          {
+            label: "Sign in",
+            href: `/login?next=${encodeURIComponent(
+              typeof window !== "undefined"
+                ? window.location.pathname + window.location.search
+                : "/",
+            )}`,
+          },
+        );
+      } else {
+        const message =
+          err instanceof Error ? err.message : "Something went wrong.";
+        appendAssistantError(message);
+      }
     } finally {
       setSending(false);
       setSendingOp(null);

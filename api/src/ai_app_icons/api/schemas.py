@@ -143,5 +143,10 @@ class HealthResponse(BaseModel):
     version: str
 
 
+class ConfigResponse(BaseModel):
+    """Public server-config response — consumed by the CLI on startup."""
+    auth_required: bool
+
+
 # Fix forward reference for AssetsRequest
 AssetsRequest.model_rebuild()

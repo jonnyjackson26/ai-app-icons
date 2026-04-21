@@ -28,6 +28,10 @@ export interface BackgroundConfig {
   direction?: string;
 }
 
+export interface ServerConfig {
+  auth_required: boolean;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -39,7 +43,14 @@ export class ApiError extends Error {
 }
 
 export class ApiClient {
-  constructor(private baseUrl: string) {}
+  constructor(
+    private baseUrl: string,
+    private authToken: string | null = null,
+  ) {}
+
+  async getConfig(): Promise<ServerConfig> {
+    return this.request<ServerConfig>("GET", "/config");
+  }
 
   async getModes(): Promise<ModeInfo[]> {
     return this.request<ModeInfo[]>("GET", "/modes");
@@ -63,16 +74,26 @@ export class ApiClient {
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const headers: Record<string, string> = {};
+    if (body) headers["Content-Type"] = "application/json";
+    if (this.authToken) headers["Authorization"] = `Bearer ${this.authToken}`;
+
     const res = await fetch(`${this.baseUrl}${path}`, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : {},
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) {
       const parsed = (await res.json().catch(() => null)) as
-        | { detail?: string }
+        | { detail?: unknown }
         | null;
-      throw new ApiError(res.status, parsed?.detail ?? `HTTP ${res.status}`);
+      const detail =
+        typeof parsed?.detail === "string"
+          ? parsed.detail
+          : parsed?.detail
+            ? JSON.stringify(parsed.detail)
+            : `HTTP ${res.status}`;
+      throw new ApiError(res.status, detail);
     }
     return (await res.json()) as T;
   }

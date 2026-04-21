@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import IconPreview from "@/components/ui/IconPreview";
 import type { ChatMessage } from "@/lib/chatTypes";
 
@@ -18,6 +19,20 @@ export default function Message({ message }: { message: ChatMessage }) {
           {message.content}
           {message.streaming && (
             <span className="inline-block w-1.5 h-4 align-middle ml-0.5 bg-current animate-pulse" />
+          )}
+          {message.cta && (
+            <div className="mt-2">
+              <Link
+                href={message.cta.href}
+                className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  isError
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
+              >
+                {message.cta.label}
+              </Link>
+            </div>
           )}
         </div>
       </div>

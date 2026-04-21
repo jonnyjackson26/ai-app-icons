@@ -284,9 +284,43 @@ npm publish
 
 ### Pre-launch checklist (before going wide, not needed for 0.x dogfood releases)
 
-- The hosted API has **no auth and no rate limiting** today. Every `npx create-app-icon` invocation hits `https://ai-app-icons.fly.dev` and spends your OpenAI credits. Before publicizing, add a per-IP limiter (e.g. `slowapi`) or a shared-token gate to `POST /generate` and `POST /assets`.
 - Optionally set up a GitHub Actions workflow that runs `npm publish` on tag push, using an `NPM_TOKEN` secret.
 - Confirm `create-app-icon` is still free on npm (`npm view create-app-icon`). If someone grabs it first, fall back to a scope like `@yourname/create-app-icon`.
+
+## Self-hosting
+
+The hosted service (`ai-app-icons.fly.dev` + `ai-app-icons.vercel.app`) gates AI usage behind Supabase login with a free tier of 5 calls/week and a $9.99/mo Pro tier. If you'd rather run everything yourself with your own OpenAI key, auth and billing are off by default when the relevant env vars are unset.
+
+**Minimum setup:**
+
+```bash
+# api/.env
+OPENAI_API_KEY=sk-...
+# Leave SUPABASE_URL unset → auth is disabled, all endpoints are open.
+
+# web/.env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000
+# Leave NEXT_PUBLIC_SUPABASE_URL unset → middleware is a pass-through.
+```
+
+**CLI against your self-host:**
+
+```bash
+AI_APP_ICONS_API_URL=http://localhost:8000 npx create-app-icon
+# or
+npx create-app-icon --api-url http://localhost:8000
+```
+
+The CLI pings `GET /config` before prompting — if your server reports `{ "auth_required": false }`, the login prompt is skipped entirely.
+
+**To run the hosted version yourself** (auth + billing enabled), set these env vars. Full reference in [api/.env.example](api/.env.example) and [web/.env.example](web/.env.example).
+
+| Service | Required env vars |
+|---------|-------------------|
+| api/    | `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET` |
+| web/    | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_PRO`, `STRIPE_WEBHOOK_SECRET` |
+
+Run [supabase/migrations/0001_auth_and_billing.sql](supabase/migrations/0001_auth_and_billing.sql) against your Supabase project to set up the `profiles`, `cli_api_keys`, and `usage_events` tables.
 
 ## Inspiration
 

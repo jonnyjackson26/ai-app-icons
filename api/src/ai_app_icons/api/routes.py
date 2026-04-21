@@ -8,7 +8,7 @@ import tempfile
 from io import BytesIO
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from openai import APIError
 from PIL import Image
 
@@ -17,11 +17,14 @@ from ai_app_icons.assets import ASSETS, build_expo_config, generate_all_assets
 from ai_app_icons.icon_gen import edit_icon, generate_icon
 from ai_app_icons.modes import DEFAULT_MODE_ID, MODES
 
+from .auth import User, auth_required, get_current_user
+from .quota import check_quota, record_usage
 from .schemas import (
     AssetFile,
     AssetsRequest,
     AssetsResponse,
     BackgroundTypeInfo,
+    ConfigResponse,
     EditRequest,
     GenerateRequest,
     HealthResponse,
@@ -62,6 +65,12 @@ async def health():
     return HealthResponse(version=__version__)
 
 
+@router.get("/config", response_model=ConfigResponse)
+async def config():
+    """Public server config. The CLI calls this before requesting credentials."""
+    return ConfigResponse(auth_required=auth_required())
+
+
 @router.get("/sentry-debug", include_in_schema=False)
 async def sentry_debug():
     """Trigger a ZeroDivisionError to verify Sentry is wired up."""
@@ -69,7 +78,10 @@ async def sentry_debug():
 
 
 @router.post("/generate", response_model=ImageResponse)
-async def generate(req: GenerateRequest):
+async def generate(
+    req: GenerateRequest,
+    user: User = Depends(check_quota),
+):
     """Generate a new app icon from a text description.
 
     Returns a base64-encoded PNG with transparent background.
@@ -78,7 +90,6 @@ async def generate(req: GenerateRequest):
         image = await asyncio.to_thread(
             generate_icon, req.description, size=req.size, mode=req.mode
         )
-        return ImageResponse(image_base64=_image_to_base64(image))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except APIError:
@@ -86,9 +97,15 @@ async def generate(req: GenerateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    record_usage(user, "generate")
+    return ImageResponse(image_base64=_image_to_base64(image))
+
 
 @router.post("/edit", response_model=ImageResponse)
-async def edit(req: EditRequest):
+async def edit(
+    req: EditRequest,
+    user: User = Depends(check_quota),
+):
     """Edit an existing icon based on a text instruction.
 
     Send the current icon as base64 and describe what to change.
@@ -102,18 +119,23 @@ async def edit(req: EditRequest):
         image, message = await asyncio.to_thread(
             edit_icon, source, req.instruction, size=req.size
         )
-        return ImageResponse(
-            image_base64=_image_to_base64(image),
-            message=message,
-        )
     except APIError:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    record_usage(user, "edit")
+    return ImageResponse(
+        image_base64=_image_to_base64(image),
+        message=message,
+    )
+
 
 @router.post("/assets", response_model=AssetsResponse)
-async def assets(req: AssetsRequest):
+async def assets(
+    req: AssetsRequest,
+    _user: User = Depends(get_current_user),
+):
     """Generate all Expo-compatible asset files from an icon.
 
     Returns each asset as a named base64-encoded PNG, plus the resolved

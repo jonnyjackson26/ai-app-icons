@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import StepIndicator from "@/components/ui/StepIndicator";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import UserBadge from "@/components/UserBadge";
 import ChatView from "@/components/chat/ChatView";
 import BackgroundStep from "@/components/steps/BackgroundStep";
 import ExportStep from "@/components/steps/ExportStep";
@@ -95,8 +96,9 @@ export default function Wizard() {
               Generate app icon assets specifically for Expo apps
             </p>
           </div>
-          <div className="flex-1 sm:flex sm:justify-end">
+          <div className="flex-1 sm:flex sm:justify-end sm:items-center sm:gap-3">
             <StepIndicator current={step} />
+            <UserBadge />
           </div>
         </div>
         {data.cliCallback && (

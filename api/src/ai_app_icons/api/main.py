@@ -1,5 +1,6 @@
 """FastAPI application for AI App Icons."""
 
+import logging
 import os
 
 from fastapi import FastAPI
@@ -10,6 +11,15 @@ from ai_app_icons import __version__
 
 from .error_handlers import openai_exception_handler
 from .routes import router
+
+# Show INFO-level logs from our own modules (auth, quota, routes). Uvicorn
+# configures its own loggers separately; this just ensures that `logger.info(...)`
+# calls in ai_app_icons.* actually reach the terminal during development.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)-5s %(name)s: %(message)s",
+)
+logging.getLogger("ai_app_icons").setLevel(logging.INFO)
 
 
 def _init_sentry() -> None:
