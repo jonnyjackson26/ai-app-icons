@@ -5,3 +5,11 @@ also, would it have been better overall in the long run to just have the backend
  
 
 android adaptive icons should be 512x512 - look at how expo sdk 55 has its icons
+
+ 
+
+make the usage not be down in the profile chip in the header, but rather as a bar above the textarea. make it also have border radius for the top corners. but make it touch naturally the chat area.
+
+ 
+
+option to use emojis/icons

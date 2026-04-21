@@ -55,6 +55,19 @@ export default function Wizard() {
   const canRender = REQUIRES[requested](data);
   const step: Step = canRender ? requested : "chat";
 
+  console.log(
+    "[Wizard] render step=",
+    step,
+    "requested=",
+    requested,
+    "canRender=",
+    canRender,
+    "hasIcon=",
+    !!data.iconBase64,
+    "hasAssets=",
+    !!data.assets,
+  );
+
   const cliCallbackRaw = params.get("cli_callback");
   const cliTokenRaw = params.get("cli_token");
   const cliProjectRaw = params.get("cli_project");

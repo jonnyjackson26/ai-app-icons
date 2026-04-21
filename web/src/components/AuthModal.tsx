@@ -98,7 +98,7 @@ export default function AuthModal({ open, onClose, reason }: AuthModalProps) {
   const sub =
     reason === "quota"
       ? "You've used your anonymous preview. Sign in for 5 free AI calls per week, or upgrade to Pro for 100."
-      : "Free tier includes 5 AI calls per week.";
+      : "";
 
   return (
     <Modal open={open} onClose={onClose} size="sm">
@@ -106,7 +106,9 @@ export default function AuthModal({ open, onClose, reason }: AuthModalProps) {
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
           {heading}
         </h2>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{sub}</p>
+        {sub && (
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{sub}</p>
+        )}
 
         {step === "enterEmail" ? (
           <>

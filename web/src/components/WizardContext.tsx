@@ -46,6 +46,7 @@ interface WizardContextValue {
   reset: () => void;
   appendMessage: (msg: ChatMessage) => void;
   updateMessage: (id: string, patch: Partial<ChatMessage>) => void;
+  removeMessage: (id: string) => void;
 }
 
 const WizardContext = createContext<WizardContextValue | null>(null);
@@ -75,9 +76,23 @@ export function WizardProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const removeMessage = useCallback((id: string) => {
+    setData((prev) => ({
+      ...prev,
+      messages: prev.messages.filter((m) => m.id !== id),
+    }));
+  }, []);
+
   return (
     <WizardContext.Provider
-      value={{ data, update, reset, appendMessage, updateMessage }}
+      value={{
+        data,
+        update,
+        reset,
+        appendMessage,
+        updateMessage,
+        removeMessage,
+      }}
     >
       {children}
     </WizardContext.Provider>

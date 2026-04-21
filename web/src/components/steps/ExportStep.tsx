@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import { generateAssets } from "@/lib/api";
 import { downloadAllAsZip, downloadBase64Image } from "@/lib/download";
 import { useWizard } from "@/components/WizardContext";
+import { stepHref } from "@/lib/wizardNav";
 
 const PLATFORM_ORDER = ["general", "ios", "android", "web"] as const;
 const PLATFORM_LABELS: Record<string, string> = {
@@ -24,6 +25,7 @@ const VARIANT_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function ExportStep() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data, update, reset } = useWizard();
   const iconBase64 = data.iconBase64!;
   const {
@@ -44,10 +46,12 @@ export default function ExportStep() {
 
   useEffect(() => {
     if (assets) return;
+    console.log("[ExportStep] mounting; firing generateAssets");
     const ac = new AbortController();
     generateAssets(iconBase64, backgroundConfig, ac.signal)
       .then((res) => {
         if (ac.signal.aborted) return;
+        console.log("[ExportStep] assets generated; count=", res.assets.length);
         update({
           assets: res.assets,
           expoConfig: res.expo_config,
@@ -57,13 +61,14 @@ export default function ExportStep() {
       })
       .catch((err) => {
         if (err?.name === "AbortError" || ac.signal.aborted) return;
+        console.warn("[ExportStep] generateAssets failed:", err);
         update({
           error: err instanceof Error ? err.message : "Asset generation failed",
         });
-        router.push("?step=background");
+        router.push(stepHref(searchParams, "background"));
       });
     return () => ac.abort();
-  }, [assets, iconBase64, backgroundConfig, router, update]);
+  }, [assets, iconBase64, backgroundConfig, router, searchParams, update]);
 
   if (!assets) {
     return <Spinner message="Generating all asset sizes..." />;
@@ -84,7 +89,7 @@ export default function ExportStep() {
 
   const handleCreateAnother = () => {
     reset();
-    router.push("?step=describe");
+    router.push(stepHref(searchParams, "chat"));
   };
 
   const handleSendToCli = async () => {

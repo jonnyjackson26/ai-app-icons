@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import MessageList from "./MessageList";
 import Composer from "./Composer";
 import Suggestions from "./Suggestions";
@@ -15,15 +15,31 @@ import {
 } from "@/lib/api";
 import { newId, type ChatMessage } from "@/lib/chatTypes";
 import { useStreamText } from "@/lib/useStreamText";
+import { createClient } from "@/lib/supabase/browser";
+import { stepHref } from "@/lib/wizardNav";
 
 const WELCOME =
   "Welcome to ai-app-icons!\n" +
   "First, I'll generate a logo for your app — just the artwork, no background yet. " +
   "Once you like the logo, pick a background and I'll generate every asset your Expo app needs (iOS, Android, splash, favicon) for full platform coverage.";
 
+// A single generate/edit attempt, shaped so it can be replayed after sign-in.
+type RequestPayload =
+  | { kind: "generate"; description: string; mode: string | null }
+  | { kind: "editExisting"; iconBase64: string; instruction: string }
+  | { kind: "editAttached"; attachedImage: string; instruction: string };
+
+// sessionStorage key for the retry payload. Survives the Google-OAuth full
+// page navigation, which wipes React state (including `pendingRetryRef`).
+// Only "generate" is stored — edit payloads carry full base64 images which
+// would bust the sessionStorage quota and also depend on WizardContext
+// state that no longer exists after the reload.
+const RETRY_STORAGE_KEY = "aai_pending_retry_v1";
+
 export default function ChatView() {
   const router = useRouter();
-  const { data, update, appendMessage, updateMessage } = useWizard();
+  const searchParams = useSearchParams();
+  const { data, update, appendMessage, updateMessage, removeMessage } = useWizard();
   const { openAuth, openBilling } = useModals();
 
   const [text, setText] = useState("");
@@ -37,6 +53,12 @@ export default function ChatView() {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const promptStreamTimerRef = useRef<number | null>(null);
 
+  // Holds the payload + error-message id when a request 401s. On SIGNED_IN we
+  // remove the inline error and replay the payload — user doesn't re-type.
+  const pendingRetryRef = useRef<
+    null | { payload: RequestPayload; errorMessageId: string }
+  >(null);
+
   const cancelPromptStream = useCallback(() => {
     if (promptStreamTimerRef.current !== null) {
       window.clearInterval(promptStreamTimerRef.current);
@@ -48,7 +70,7 @@ export default function ChatView() {
     return () => cancelPromptStream();
   }, [cancelPromptStream]);
 
-  // Kick off the welcome stream once on mount if the chat is empty.
+  // Welcome stream, once on mount.
   useEffect(() => {
     if (welcomeStartedRef.current) return;
     if (data.messages.length > 0) {
@@ -118,8 +140,8 @@ export default function ChatView() {
   );
 
   const onPickBackground = useCallback(() => {
-    router.push("?step=background");
-  }, [router]);
+    router.push(stepHref(searchParams, "background"));
+  }, [router, searchParams]);
 
   const readFile = (file: File, onLoad: (base64: string) => void) => {
     const reader = new FileReader();
@@ -141,7 +163,7 @@ export default function ChatView() {
     if (!file || !file.type.startsWith("image/")) return;
     readFile(file, (base64) => {
       update({ iconBase64: base64, editMessage: "", error: null });
-      router.push("?step=background");
+      router.push(stepHref(searchParams, "background"));
     });
   };
 
@@ -186,59 +208,31 @@ export default function ChatView() {
     [appendMessage],
   );
 
-  const onSend = useCallback(async () => {
-    const trimmed = text.trim();
-    if (!trimmed || sending) {
-      console.log("[ChatView] onSend ignored:", { empty: !trimmed, sending });
-      return;
-    }
+  // Core API call. Shared between the first attempt and the post-sign-in replay.
+  // Does NOT append the user message — caller owns that so retries don't duplicate.
+  const executeRequest = useCallback(
+    async (payload: RequestPayload) => {
+      console.log("[ChatView] executeRequest", payload.kind);
+      const op: "generate" | "refine" =
+        payload.kind === "generate" ? "generate" : "refine";
+      setSending(true);
+      setSendingOp(op);
 
-    cancelPromptStream();
-    const op: "generate" | "refine" =
-      attachedImage || data.iconBase64 ? "refine" : "generate";
-    console.log("[ChatView] onSend →", op, "(text len:", trimmed.length, ")");
-    setSending(true);
-    setSendingOp(op);
-
-    try {
-      if (attachedImage) {
-        // Refine with attached image + instruction
-        appendMessage({
-          id: newId(),
-          role: "user",
-          kind: "attach",
-          imageBase64: attachedImage,
-          instruction: trimmed,
-        });
-        setText("");
-        const imgForEdit = attachedImage;
-        clearAttachment();
-        const res = await editIcon(imgForEdit, trimmed);
-        update({
-          iconBase64: res.image_base64,
-          editMessage: res.message,
-          error: null,
-        });
-        appendAssistantIcon(res.image_base64, res.message);
-      } else {
-        appendMessage({
-          id: newId(),
-          role: "user",
-          kind: "text",
-          content: trimmed,
-        });
-        setText("");
-        if (!data.iconBase64) {
-          const effectiveMode = data.mode || undefined;
-          const res = await generateIcon(trimmed, effectiveMode);
+      try {
+        if (payload.kind === "generate") {
+          const res = await generateIcon(payload.description, payload.mode ?? undefined);
+          update({ iconBase64: res.image_base64, editMessage: "", error: null });
+          appendAssistantIcon(res.image_base64);
+        } else if (payload.kind === "editExisting") {
+          const res = await editIcon(payload.iconBase64, payload.instruction);
           update({
             iconBase64: res.image_base64,
-            editMessage: "",
+            editMessage: res.message,
             error: null,
           });
-          appendAssistantIcon(res.image_base64);
+          appendAssistantIcon(res.image_base64, res.message);
         } else {
-          const res = await editIcon(data.iconBase64, trimmed);
+          const res = await editIcon(payload.attachedImage, payload.instruction);
           update({
             iconBase64: res.image_base64,
             editMessage: res.message,
@@ -246,29 +240,187 @@ export default function ChatView() {
           });
           appendAssistantIcon(res.image_base64, res.message);
         }
+      } catch (err) {
+        if (err instanceof QuotaExceededError) {
+          openBilling("default");
+          appendAssistantError(
+            `You've hit your ${err.tier} plan limit of ${err.limit} AI calls per ${err.windowDays} days. Upgrade to keep generating.`,
+            { label: "See plans", onClick: () => openBilling("default") },
+          );
+        } else if (err instanceof AuthRequiredError) {
+          // Pre-generate the id so we can remove this message on replay.
+          const errorMessageId = newId();
+          appendMessage({
+            id: errorMessageId,
+            role: "assistant",
+            kind: "text",
+            content: "Please sign in first",
+            tone: "error",
+            cta: { label: "Sign in", onClick: () => openAuth("sign-in") },
+          });
+          pendingRetryRef.current = { payload, errorMessageId };
+          // Persist generate-kind retries so Google OAuth (full page reload)
+          // can still replay. Edit-kind retries are only stashed in-memory.
+          if (payload.kind === "generate" && typeof window !== "undefined") {
+            try {
+              sessionStorage.setItem(
+                RETRY_STORAGE_KEY,
+                JSON.stringify(payload),
+              );
+            } catch {
+              /* quota / private browsing — in-memory fallback is fine */
+            }
+          }
+          openAuth("sign-in");
+        } else {
+          const message =
+            err instanceof Error ? err.message : "Something went wrong.";
+          appendAssistantError(message);
+        }
+      } finally {
+        setSending(false);
+        setSendingOp(null);
       }
-    } catch (err) {
-      if (err instanceof QuotaExceededError) {
-        openBilling("default");
-        appendAssistantError(
-          `You've hit your ${err.tier} plan limit of ${err.limit} AI calls per ${err.windowDays} days. Upgrade to keep generating.`,
-          { label: "See plans", onClick: () => openBilling("default") },
-        );
-      } else if (err instanceof AuthRequiredError) {
-        openAuth("sign-in");
-        appendAssistantError(
-          "Sign in to generate app icons. Your free tier includes 5 AI calls per week.",
-          { label: "Sign in", onClick: () => openAuth("sign-in") },
-        );
-      } else {
-        const message =
-          err instanceof Error ? err.message : "Something went wrong.";
-        appendAssistantError(message);
+    },
+    [
+      appendAssistantError,
+      appendAssistantIcon,
+      appendMessage,
+      openAuth,
+      openBilling,
+      update,
+    ],
+  );
+
+  // When the user signs in, replay the request that got 401'd.
+  //
+  // Two sources of pending retry:
+  //   1. `pendingRetryRef` — in-memory, set when AuthRequiredError happens
+  //      on THIS page load (OTP flow: modal closes, we replay here).
+  //   2. sessionStorage — survives a full page reload (Google OAuth round-trip
+  //      reloads the page; in-memory ref is gone). We restore the user's
+  //      original prompt as a chat message, then replay.
+  //
+  // We listen for both SIGNED_IN and INITIAL_SESSION — the latter fires on
+  // first mount when a session cookie is already present (the OAuth case).
+  useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return;
+    const supabase = createClient();
+
+    let replayed = false;
+
+    async function tryReplay(trigger: string) {
+      if (replayed) return;
+
+      // In-memory (OTP path): preferred because it carries the errorMessageId
+      // so we can remove the "Please sign in first" message inline.
+      const inMemory = pendingRetryRef.current;
+      if (inMemory) {
+        replayed = true;
+        pendingRetryRef.current = null;
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.removeItem(RETRY_STORAGE_KEY);
+          } catch {}
+        }
+        console.log("[ChatView] replay (memory) trigger=", trigger);
+        removeMessage(inMemory.errorMessageId);
+        await executeRequest(inMemory.payload);
+        return;
       }
-    } finally {
-      setSending(false);
-      setSendingOp(null);
+
+      // sessionStorage (OAuth path): chat history is fresh (page reloaded),
+      // so we also append the original user message so the transcript isn't
+      // missing the prompt that triggered everything.
+      if (typeof window === "undefined") return;
+      let stored: string | null = null;
+      try {
+        stored = sessionStorage.getItem(RETRY_STORAGE_KEY);
+      } catch {}
+      if (!stored) return;
+
+      let payload: RequestPayload;
+      try {
+        payload = JSON.parse(stored) as RequestPayload;
+      } catch {
+        sessionStorage.removeItem(RETRY_STORAGE_KEY);
+        return;
+      }
+
+      replayed = true;
+      sessionStorage.removeItem(RETRY_STORAGE_KEY);
+      console.log("[ChatView] replay (sessionStorage) trigger=", trigger);
+
+      if (payload.kind === "generate") {
+        appendMessage({
+          id: newId(),
+          role: "user",
+          kind: "text",
+          content: payload.description,
+        });
+      }
+      await executeRequest(payload);
     }
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) return;
+      if (event !== "SIGNED_IN" && event !== "INITIAL_SESSION") return;
+      tryReplay(event);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [executeRequest, removeMessage, appendMessage]);
+
+  const onSend = useCallback(async () => {
+    const trimmed = text.trim();
+    if (!trimmed || sending) {
+      console.log("[ChatView] onSend ignored:", { empty: !trimmed, sending });
+      return;
+    }
+    cancelPromptStream();
+    console.log("[ChatView] onSend (text len:", trimmed.length, ")");
+
+    let payload: RequestPayload;
+
+    if (attachedImage) {
+      const imgForEdit = attachedImage;
+      appendMessage({
+        id: newId(),
+        role: "user",
+        kind: "attach",
+        imageBase64: imgForEdit,
+        instruction: trimmed,
+      });
+      setText("");
+      clearAttachment();
+      payload = {
+        kind: "editAttached",
+        attachedImage: imgForEdit,
+        instruction: trimmed,
+      };
+    } else {
+      appendMessage({
+        id: newId(),
+        role: "user",
+        kind: "text",
+        content: trimmed,
+      });
+      setText("");
+      if (data.iconBase64) {
+        payload = {
+          kind: "editExisting",
+          iconBase64: data.iconBase64,
+          instruction: trimmed,
+        };
+      } else {
+        payload = {
+          kind: "generate",
+          description: trimmed,
+          mode: data.mode || null,
+        };
+      }
+    }
+
+    await executeRequest(payload);
   }, [
     text,
     sending,
@@ -278,11 +430,7 @@ export default function ChatView() {
     appendMessage,
     cancelPromptStream,
     clearAttachment,
-    update,
-    appendAssistantIcon,
-    appendAssistantError,
-    openAuth,
-    openBilling,
+    executeRequest,
   ]);
 
   const loadingLabel =
