@@ -57,14 +57,14 @@ export default function Message({ message }: { message: ChatMessage }) {
     if (!message.caption) {
       return (
         <div className="flex justify-start">
-          <IconPreview base64={message.iconBase64} size="md" />
+          <IconPreview base64={message.iconBase64} url={message.iconUrl} size="md" />
         </div>
       );
     }
     return (
       <div className="flex justify-start">
         <div className="max-w-[85%] space-y-2">
-          <IconPreview base64={message.iconBase64} size="md" />
+          <IconPreview base64={message.iconBase64} url={message.iconUrl} size="md" />
           <p className="text-xs text-zinc-500 dark:text-zinc-400 px-1">
             {message.caption}
           </p>
@@ -84,15 +84,20 @@ export default function Message({ message }: { message: ChatMessage }) {
   }
 
   // user + attach
+  const attachSrc =
+    message.imageUrl ??
+    (message.imageBase64 ? `data:image/png;base64,${message.imageBase64}` : "");
   return (
     <div className="flex justify-end">
       <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-blue-600 text-white px-3 py-3 text-sm space-y-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`data:image/png;base64,${message.imageBase64}`}
-          alt="Attached"
-          className="rounded-lg max-h-48 w-auto bg-white/10"
-        />
+        {attachSrc && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={attachSrc}
+            alt="Attached"
+            className="rounded-lg max-h-48 w-auto bg-white/10"
+          />
+        )}
         {message.instruction && (
           <p className="whitespace-pre-wrap">{message.instruction}</p>
         )}

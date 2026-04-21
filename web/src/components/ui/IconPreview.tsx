@@ -1,7 +1,8 @@
 "use client";
 
 interface IconPreviewProps {
-  base64: string;
+  base64?: string;
+  url?: string;
   size?: "sm" | "md" | "lg";
 }
 
@@ -11,7 +12,8 @@ const sizeClasses = {
   lg: "w-80 h-80 sm:w-96 sm:h-96",
 };
 
-export default function IconPreview({ base64, size = "lg" }: IconPreviewProps) {
+export default function IconPreview({ base64, url, size = "lg" }: IconPreviewProps) {
+  const src = url ?? (base64 ? `data:image/png;base64,${base64}` : "");
   return (
     <div
       className={`${sizeClasses[size]} rounded-2xl overflow-hidden shadow-lg mx-auto`}
@@ -25,12 +27,14 @@ export default function IconPreview({ base64, size = "lg" }: IconPreviewProps) {
         backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0",
       }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={`data:image/png;base64,${base64}`}
-        alt="Icon preview"
-        className="w-full h-full object-contain"
-      />
+      {src && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt="Icon preview"
+          className="w-full h-full object-contain"
+        />
+      )}
     </div>
   );
 }

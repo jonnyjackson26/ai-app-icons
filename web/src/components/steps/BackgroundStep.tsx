@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import BackgroundPreview from "@/components/BackgroundPreview";
 import { PRESETS } from "@/lib/backgroundPresets";
 import { useWizard } from "@/components/WizardContext";
+import { useChatPersistence } from "@/lib/chatPersistence";
 import type { BackgroundConfig } from "@/lib/types";
 
 // Keep in sync with api/src/ai_app_icons/constants.py (IOS_DARK_BG).
@@ -65,6 +66,7 @@ function seedFromConfig(cfg: BackgroundConfig): Seed {
 
 export default function BackgroundStep() {
   const { data, update, setStep } = useWizard();
+  const { patchCurrentChat } = useChatPersistence();
   const iconBase64 = data.iconBase64!;
 
   const initial = seedFromConfig(data.backgroundConfig);
@@ -85,6 +87,8 @@ export default function BackgroundStep() {
   const handleGenerate = () => {
     console.log("[BackgroundStep] Generate Assets → setStep(export)");
     update({ backgroundConfig: config, assets: null });
+    // Persist the chosen background so reopening this chat remembers it.
+    patchCurrentChat({ backgroundConfig: config });
     setStep("export");
   };
 

@@ -5,7 +5,9 @@ import MessageList from "./MessageList";
 import Composer from "./Composer";
 import Suggestions from "./Suggestions";
 import { useWizard } from "@/components/WizardContext";
+import { useChats } from "@/components/ChatsContext";
 import { useModals } from "@/components/ModalProvider";
+import { useChatPersistence } from "@/lib/chatPersistence";
 import {
   AuthRequiredError,
   QuotaExceededError,
@@ -44,6 +46,14 @@ export default function ChatView() {
     setStep,
   } = useWizard();
   const { openAuth, openBilling } = useModals();
+  const {
+    persistUserMessage,
+    persistAssistantIcon,
+    persistAssistantText,
+    migrateAnonymousChat,
+    hydrateIconBase64,
+  } = useChatPersistence();
+  const { upsertLocal, refresh: refreshChats } = useChats();
 
   const [text, setText] = useState("");
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
@@ -73,9 +83,12 @@ export default function ChatView() {
     return () => cancelPromptStream();
   }, [cancelPromptStream]);
 
-  // Welcome stream, once on mount.
+  // Welcome stream, once on mount — only when we're genuinely starting a
+  // fresh conversation. Hydrated chats always have messages pre-populated
+  // so the length guard keeps us quiet.
   useEffect(() => {
     if (welcomeStartedRef.current) return;
+    if (data.isHydrating) return;
     if (data.messages.length > 0) {
       welcomeStartedRef.current = true;
       return;
@@ -108,7 +121,7 @@ export default function ChatView() {
     { enabled: welcomeIdRef.current !== null },
   );
 
-  const hasIcon = !!data.iconBase64;
+  const hasIcon = !!(data.iconBase64 || data.iconUrl);
 
   const onPickPrompt = useCallback(
     (p: string) => {
@@ -166,7 +179,7 @@ export default function ChatView() {
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
     readFile(file, (base64) => {
-      update({ iconBase64: base64, editMessage: "", error: null });
+      update({ iconBase64: base64, iconUrl: null, iconPath: null, editMessage: "", error: null });
       setStep("background");
     });
   };
@@ -181,7 +194,7 @@ export default function ChatView() {
     setAttachedName(null);
   }, []);
 
-  const appendAssistantIcon = useCallback(
+  const appendAndPersistAssistantIcon = useCallback(
     (iconBase64: string, caption?: string) => {
       const iconMsg: ChatMessage = {
         id: newId(),
@@ -191,8 +204,21 @@ export default function ChatView() {
         caption: caption || undefined,
       };
       appendMessage(iconMsg);
+      // Fire-and-forget persistence — the UI already has the icon on screen,
+      // Storage upload + DB insert happens in the background.
+      persistAssistantIcon(iconMsg, iconBase64).then(() => {
+        if (data.chatId) {
+          upsertLocal({
+            id: data.chatId,
+            currentIconPath: null,
+            lastMessageAt: new Date().toISOString(),
+          });
+          // Refresh the sidebar so the new thumbnail shows up.
+          refreshChats();
+        }
+      });
     },
-    [appendMessage],
+    [appendMessage, persistAssistantIcon, data.chatId, upsertLocal, refreshChats],
   );
 
   const appendAssistantError = useCallback(
@@ -200,16 +226,18 @@ export default function ChatView() {
       content: string,
       cta?: { label: string; href?: string; onClick?: () => void },
     ) => {
-      appendMessage({
+      const msg: ChatMessage = {
         id: newId(),
         role: "assistant",
         kind: "text",
         content,
         tone: "error",
         cta,
-      });
+      };
+      appendMessage(msg);
+      persistAssistantText(msg);
     },
-    [appendMessage],
+    [appendMessage, persistAssistantText],
   );
 
   // Core API call. Shared between the first attempt and the post-sign-in replay.
@@ -225,24 +253,31 @@ export default function ChatView() {
       try {
         if (payload.kind === "generate") {
           const res = await generateIcon(payload.description, payload.mode ?? undefined);
-          update({ iconBase64: res.image_base64, editMessage: "", error: null });
-          appendAssistantIcon(res.image_base64);
+          update({
+            iconBase64: res.image_base64,
+            iconUrl: null,
+            editMessage: "",
+            error: null,
+          });
+          appendAndPersistAssistantIcon(res.image_base64);
         } else if (payload.kind === "editExisting") {
           const res = await editIcon(payload.iconBase64, payload.instruction);
           update({
             iconBase64: res.image_base64,
+            iconUrl: null,
             editMessage: res.message,
             error: null,
           });
-          appendAssistantIcon(res.image_base64, res.message);
+          appendAndPersistAssistantIcon(res.image_base64, res.message);
         } else {
           const res = await editIcon(payload.attachedImage, payload.instruction);
           update({
             iconBase64: res.image_base64,
+            iconUrl: null,
             editMessage: res.message,
             error: null,
           });
-          appendAssistantIcon(res.image_base64, res.message);
+          appendAndPersistAssistantIcon(res.image_base64, res.message);
         }
       } catch (err) {
         if (err instanceof QuotaExceededError) {
@@ -288,7 +323,7 @@ export default function ChatView() {
     },
     [
       appendAssistantError,
-      appendAssistantIcon,
+      appendAndPersistAssistantIcon,
       appendMessage,
       openAuth,
       openBilling,
@@ -296,17 +331,8 @@ export default function ChatView() {
     ],
   );
 
-  // When the user signs in, replay the request that got 401'd.
-  //
-  // Two sources of pending retry:
-  //   1. `pendingRetryRef` — in-memory, set when AuthRequiredError happens
-  //      on THIS page load (OTP flow: modal closes, we replay here).
-  //   2. sessionStorage — survives a full page reload (Google OAuth round-trip
-  //      reloads the page; in-memory ref is gone). We restore the user's
-  //      original prompt as a chat message, then replay.
-  //
-  // We listen for both SIGNED_IN and INITIAL_SESSION — the latter fires on
-  // first mount when a session cookie is already present (the OAuth case).
+  // When the user signs in, replay the request that got 401'd AND migrate any
+  // anonymous in-memory transcript to a persisted chat so the sidebar has it.
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return;
     const supabase = createClient();
@@ -315,6 +341,12 @@ export default function ChatView() {
 
     async function tryReplay(trigger: string) {
       if (replayed) return;
+
+      // Migrate anonymous transcript first (before replay so the replayed
+      // assistant response lands inside the new persisted chat).
+      if (!data.chatId && data.messages.length > 0) {
+        await migrateAnonymousChat(data.messages);
+      }
 
       // In-memory (OTP path): preferred because it carries the errorMessageId
       // so we can remove the "Please sign in first" message inline.
@@ -356,12 +388,14 @@ export default function ChatView() {
       console.log("[ChatView] replay (sessionStorage) trigger=", trigger);
 
       if (payload.kind === "generate") {
-        appendMessage({
+        const userMsg: ChatMessage = {
           id: newId(),
           role: "user",
           kind: "text",
           content: payload.description,
-        });
+        };
+        appendMessage(userMsg);
+        persistUserMessage(userMsg);
       }
       await executeRequest(payload);
     }
@@ -372,7 +406,15 @@ export default function ChatView() {
       tryReplay(event);
     });
     return () => sub.subscription.unsubscribe();
-  }, [executeRequest, removeMessage, appendMessage]);
+  }, [
+    executeRequest,
+    removeMessage,
+    appendMessage,
+    persistUserMessage,
+    migrateAnonymousChat,
+    data.chatId,
+    data.messages,
+  ]);
 
   const onSend = useCallback(async () => {
     const trimmed = text.trim();
@@ -387,13 +429,15 @@ export default function ChatView() {
 
     if (attachedImage) {
       const imgForEdit = attachedImage;
-      appendMessage({
+      const userMsg: ChatMessage = {
         id: newId(),
         role: "user",
         kind: "attach",
         imageBase64: imgForEdit,
         instruction: trimmed,
-      });
+      };
+      appendMessage(userMsg);
+      persistUserMessage(userMsg);
       setText("");
       clearAttachment();
       payload = {
@@ -402,17 +446,27 @@ export default function ChatView() {
         instruction: trimmed,
       };
     } else {
-      appendMessage({
+      const userMsg: ChatMessage = {
         id: newId(),
         role: "user",
         kind: "text",
         content: trimmed,
-      });
+      };
+      appendMessage(userMsg);
+      persistUserMessage(userMsg);
       setText("");
-      if (data.iconBase64) {
+      // For hydrated chats the byte string isn't loaded yet — pull it from
+      // the signed URL before we can round-trip an edit.
+      let iconForEdit = data.iconBase64;
+      if (!iconForEdit && data.iconUrl) {
+        await hydrateIconBase64();
+        // Re-read after the hydrate; fall back to regenerate if it failed.
+        iconForEdit = data.iconBase64;
+      }
+      if (iconForEdit) {
         payload = {
           kind: "editExisting",
-          iconBase64: data.iconBase64,
+          iconBase64: iconForEdit,
           instruction: trimmed,
         };
       } else {
@@ -430,11 +484,14 @@ export default function ChatView() {
     sending,
     attachedImage,
     data.iconBase64,
+    data.iconUrl,
     data.mode,
     appendMessage,
+    persistUserMessage,
     cancelPromptStream,
     clearAttachment,
     executeRequest,
+    hydrateIconBase64,
   ]);
 
   const loadingLabel =
