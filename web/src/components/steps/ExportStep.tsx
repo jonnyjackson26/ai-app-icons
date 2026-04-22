@@ -21,6 +21,15 @@ import { CHAT_ICONS_BUCKET } from "@/lib/chatDb";
 // the prompt is copied to the user's clipboard where it can sit for days.
 const AI_PROMPT_SIGNED_URL_TTL = 60 * 60 * 24 * 7;
 
+// Self-host builds have no Supabase and no Storage, so the AI-prompt feature
+// can't work — signed URLs are the core of it. Checked at render time.
+const SUPABASE_CONFIGURED = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+// Safety cap in case `persistAssets` hangs despite per-upload timeouts (e.g.
+// the underlying Promise.all somehow never settles). Generous: 10 assets,
+// worst-case ~5MB each, a slow connection, with a buffer.
+const PERSIST_TIMEOUT_MS = 90_000;
+
 const PLATFORM_ORDER = ["general", "ios", "android", "web"] as const;
 const PLATFORM_LABELS: Record<string, string> = {
   general: "General",
@@ -56,6 +65,13 @@ export default function ExportStep() {
   const [configCopied, setConfigCopied] = useState(false);
   const [isSingleColorLogo, setIsSingleColorLogo] = useState<boolean | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  // Tracks whether Storage persistence is in-flight, succeeded, or gave up
+  // (anonymous user, self-host, or upload error). Without this, the AI-prompt
+  // button label falls back to "saving assets..." forever when persist resolves
+  // empty — since `storedAssets` never arrives to flip `aiPromptReady`.
+  const [persistState, setPersistState] = useState<"pending" | "ready" | "unavailable">(
+    () => (storedAssets && storedAssets.length > 0 ? "ready" : "pending"),
+  );
   const [cliSendState, setCliSendState] = useState<
     "idle" | "sending" | "sent" | "error"
   >("idle");
@@ -113,13 +129,46 @@ export default function ExportStep() {
           backgroundColor: bgColor,
           error: null,
         });
-        // Fire-and-forget persistence — UI is already usable.
-        persistAssets(generated, expo, bgColor)
+        // Fire-and-forget persistence — UI is already usable. Racing against
+        // a timeout so the "saving..." label can't hang forever even if the
+        // persist promise never settles.
+        //
+        // Deliberately NOT gated on the effect-scoped `cancelled` flag: when
+        // the `assets` dependency changes via the preceding `update(...)`,
+        // this effect re-runs and the old closure's `cancelled` flips to
+        // true — even though the component is very much still mounted. That
+        // would throw away a successful persist. `update()` writes to the
+        // shared wizard context (safe across re-runs), and React 18 silently
+        // no-ops setState on a truly-unmounted component.
+        const persistStart = performance.now();
+        console.log("[persist] ExportStep calling persistAssets");
+        const timeout = new Promise<"timeout">((resolve) =>
+          setTimeout(() => resolve("timeout"), PERSIST_TIMEOUT_MS),
+        );
+        Promise.race([persistAssets(generated, expo, bgColor), timeout])
           .then((stored) => {
-            if (cancelled || stored.length === 0) return;
+            const elapsed = Math.round(performance.now() - persistStart);
+            if (stored === "timeout") {
+              console.warn(
+                `[persist] TOP-LEVEL TIMEOUT after ${elapsed}ms — giving up on AI prompt feature`,
+              );
+              setPersistState("unavailable");
+              return;
+            }
+            if (stored.length === 0) {
+              console.log(`[persist] resolved empty after ${elapsed}ms — marking unavailable`);
+              setPersistState("unavailable");
+              return;
+            }
+            console.log(`[persist] resolved with ${stored.length} assets in ${elapsed}ms`);
             update({ storedAssets: stored, hasAssets: true });
+            setPersistState("ready");
           })
-          .catch((e) => console.warn("[ExportStep] persist failed:", e));
+          .catch((e) => {
+            const elapsed = Math.round(performance.now() - persistStart);
+            console.warn(`[persist] threw after ${elapsed}ms:`, e);
+            setPersistState("unavailable");
+          });
       } catch (err) {
         if (cancelled) return;
         console.warn("[ExportStep] generateAllAssets failed:", err);
@@ -410,32 +459,34 @@ export default function ExportStep() {
             </Button>
           </div>
 
-          <div className="rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-4 space-y-3">
-            <p className="text-sm text-zinc-700 dark:text-zinc-200">
-              Using GitHub Copilot, Cursor, Claude Code or another AI tool? You
-              can skip the steps below and let your AI assistant handle them
-              for you.
-            </p>
-            <button
-              type="button"
-              onClick={handleCopyAiPrompt}
-              disabled={!aiPromptReady || aiPromptState === "building"}
-              className="text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {aiPromptState === "building"
-                ? "Preparing prompt..."
-                : aiPromptState === "copied"
-                  ? "Copied! Paste into your AI tool."
-                  : !aiPromptReady
-                    ? "Get setup instructions (saving assets...)"
-                    : "Copy setup prompt for GitHub Copilot, Claude Code..."}
-            </button>
-            {aiPromptState === "error" && aiPromptError && (
-              <p className="text-xs text-red-600 dark:text-red-400">
-                {aiPromptError}
+          {SUPABASE_CONFIGURED && persistState !== "unavailable" && (
+            <div className="rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-4 space-y-3">
+              <p className="text-sm text-zinc-700 dark:text-zinc-200">
+                Using GitHub Copilot, Cursor, Claude Code or another AI tool? You
+                can skip the steps below and let your AI assistant handle them
+                for you.
               </p>
-            )}
-          </div>
+              <button
+                type="button"
+                onClick={handleCopyAiPrompt}
+                disabled={!aiPromptReady || aiPromptState === "building"}
+                className="text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {aiPromptState === "building"
+                  ? "Preparing prompt..."
+                  : aiPromptState === "copied"
+                    ? "Copied! Paste into your AI tool."
+                    : !aiPromptReady
+                      ? "Get setup instructions (saving assets...)"
+                      : "Copy setup prompt for GitHub Copilot, Claude Code..."}
+              </button>
+              {aiPromptState === "error" && aiPromptError && (
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  {aiPromptError}
+                </p>
+              )}
+            </div>
+          )}
         </>
       )}
 
