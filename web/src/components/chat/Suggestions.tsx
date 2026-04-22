@@ -6,6 +6,7 @@ import { REFINEMENT_HINTS } from "@/lib/refinementHints";
 
 interface SuggestionsProps {
   hasIcon: boolean;
+  sending: boolean;
   onPickPrompt: (prompt: string) => void;
   onPickBackground: () => void;
   onAlreadyHaveIcon: () => void;
@@ -14,6 +15,7 @@ interface SuggestionsProps {
 
 export default function Suggestions({
   hasIcon,
+  sending,
   onPickPrompt,
   onPickBackground,
   onAlreadyHaveIcon,
@@ -29,6 +31,14 @@ export default function Suggestions({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: Math.random must run client-side only to avoid SSR hydration mismatch
     setPicks(pickTwoRandom(pool));
   }, [hasIcon]);
+
+  // Hide all suggestions during an in-flight request. On initial generate this
+  // keeps the starter chips from lingering next to the loading indicator; on
+  // refinement it keeps the stale "Looks good" chip from appearing to endorse
+  // an icon the user has already asked to replace. The block reappears on
+  // completion — for successful refines/generates that means hasIcon is true
+  // and the glowing "Looks good" CTA returns.
+  if (sending) return null;
 
   // Once the user has an icon, the only suggestion that matters is "move on
   // to background" — the prompt suggestions and the alternate-input chips

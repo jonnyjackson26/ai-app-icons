@@ -656,6 +656,7 @@ export default function ChatView() {
         <div className="pointer-events-auto relative z-10">
           <Suggestions
             hasIcon={hasIcon}
+            sending={sending}
             onPickPrompt={onPickPrompt}
             onPickBackground={onPickBackground}
             onAlreadyHaveIcon={onAlreadyHaveIcon}
