@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronsUpDown, CreditCard, FileText, LogOut, Shield } from "lucide-react";
+import { BookOpen, ChevronsUpDown, CreditCard, FileText, LogOut, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import { useModals } from "./ModalProvider";
 import { useWizard } from "./WizardContext";
@@ -119,17 +119,77 @@ export default function UserBadge({ collapsed = false }: Props) {
   if (!authEnabled) return null;
 
   if (!email) {
+    // Collapsed sidebar: single icon button, no menu (users can expand the
+    // sidebar to reach Blog/Terms/Privacy).
+    if (collapsed) {
+      return (
+        <button
+          type="button"
+          onClick={() => openAuth("sign-in")}
+          aria-label="Sign in"
+          className="w-full flex items-center justify-center h-9 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+        >
+          <LogOut className="h-4 w-4 rotate-180" aria-hidden="true" />
+        </button>
+      );
+    }
     return (
-      <button
-        type="button"
-        onClick={() => openAuth("sign-in")}
-        className={`w-full flex items-center ${
-          collapsed ? "justify-center" : "justify-center gap-2"
-        } h-9 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer`}
-      >
-        {!collapsed && <span>Sign in</span>}
-        {collapsed && <LogOut className="h-4 w-4 rotate-180" aria-hidden="true" />}
-      </button>
+      <div ref={ref} className="relative">
+        <div className="w-full flex items-stretch h-9 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => openAuth("sign-in")}
+            className="flex-1 flex items-center justify-center gap-2 px-3 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+          >
+            <span>Sign in</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label="More options"
+            className="border-l border-zinc-300 dark:border-zinc-700 px-2 flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+          >
+            <ChevronsUpDown className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
+        {open && (
+          <div className="absolute left-0 right-0 bottom-full mb-1 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden z-30 min-w-[220px]">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                router.push("/blog");
+              }}
+              className="flex w-full items-center gap-2 text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+            >
+              <BookOpen className="h-4 w-4" aria-hidden="true" />
+              Blog
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                router.push("/terms");
+              }}
+              className="flex w-full items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+            >
+              <FileText className="h-4 w-4" aria-hidden="true" />
+              Terms of Service
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                router.push("/privacy");
+              }}
+              className="flex w-full items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+            >
+              <Shield className="h-4 w-4" aria-hidden="true" />
+              Privacy Policy
+            </button>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -199,9 +259,20 @@ export default function UserBadge({ collapsed = false }: Props) {
             type="button"
             onClick={() => {
               setOpen(false);
-              router.push("/terms");
+              router.push("/blog");
             }}
             className="flex w-full items-center gap-2 text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+          >
+            <BookOpen className="h-4 w-4" aria-hidden="true" />
+            Blog
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              router.push("/terms");
+            }}
+            className="flex w-full items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
           >
             <FileText className="h-4 w-4" aria-hidden="true" />
             Terms of Service

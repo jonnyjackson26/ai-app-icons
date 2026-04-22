@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import LegalPageShell from "@/components/LegalPageShell";
+import ContentPageShell from "@/components/ContentPageShell";
 
 export const metadata: Metadata = {
   title: "Terms of Service — AI App Icons",
@@ -11,7 +11,7 @@ const CONTACT_EMAIL = "me@jonny-jackson.com";
 
 export default function TermsPage() {
   return (
-    <LegalPageShell>
+    <ContentPageShell>
       <h1>Terms of Service</h1>
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
         Effective {EFFECTIVE_DATE}
@@ -175,6 +175,6 @@ export default function TermsPage() {
         Questions about these Terms? Contact us at{" "}
         <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
       </p>
-    </LegalPageShell>
+    </ContentPageShell>
   );
 }
