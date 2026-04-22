@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import colorsys
 from pathlib import Path
 
 from PIL import Image
@@ -117,15 +118,67 @@ def _resolve_bg_color(bg_config: dict) -> str:
     return "#ffffff"
 
 
+def _is_single_color(
+    image: Image.Image,
+    hue_arc_deg: float = 40.0,
+    sat_min: float = 0.2,
+    alpha_min: int = 64,
+) -> bool:
+    """Heuristic: True if the opaque pixels share essentially one hue.
+
+    Low-saturation pixels (grays, whites, near-blacks) are ignored so that
+    highlights and anti-aliasing don't skew the result. All remaining
+    saturated hues must fit within a single arc of *hue_arc_deg* on the
+    color wheel (circular distance). A logo with no saturated pixels at
+    all (pure grayscale) also counts as single-color.
+    """
+    small = image.convert("RGBA").resize((96, 96), Image.Resampling.LANCZOS)
+    hues: list[float] = []
+    for r, g, b, a in small.getdata():
+        if a < alpha_min:
+            continue
+        h, s, _ = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
+        if s < sat_min:
+            continue
+        hues.append(h * 360.0)
+
+    if len(hues) < 10:
+        return True
+
+    hues.sort()
+    n = len(hues)
+    extended = hues + [v + 360.0 for v in hues]
+    min_span = min(extended[i + n - 1] - extended[i] for i in range(n))
+    return min_span <= hue_arc_deg
+
+
+def _to_grayscale_rgba(image: Image.Image) -> Image.Image:
+    """Convert an RGBA icon to grayscale shades, preserving alpha."""
+    rgba = image.convert("RGBA")
+    alpha = rgba.getchannel("A")
+    gray = rgba.convert("RGB").convert("L")
+    return Image.merge("RGBA", (gray, gray, gray, alpha))
+
+
 def _make_ios_dark(
     size: tuple[int, int],
     bg_config: dict,
     source: Image.Image,
     icon_fraction: float,
+    single_color: bool,
 ) -> Image.Image:
-    """Create iOS dark variant: dark bg with user's background visible through the logo shape."""
+    """Create iOS dark variant.
+
+    For single-color logos: dark bg with user's background visible through
+    the logo shape (the silhouette gets painted with the brand gradient).
+    For multi-color logos: the logo is placed as-is on the dark bg so its
+    colors are preserved.
+    """
     dark_r, dark_g, dark_b = parse_hex(IOS_DARK_BG)
     dark_canvas = Image.new("RGBA", size, (dark_r, dark_g, dark_b, 255))
+
+    if not single_color:
+        return _place_icon_centered(dark_canvas, source, icon_fraction)
 
     user_bg = create_background(size, bg_config)
 
@@ -143,15 +196,22 @@ def _make_ios_tinted(
     bg_config: dict,
     source: Image.Image,
     icon_fraction: float,
+    single_color: bool,
 ) -> Image.Image:
-    """Create iOS tinted variant: dark bg with grayscale background visible through the logo shape.
+    """Create iOS tinted variant.
 
-    The user's background (gradient/solid/image) is converted to grayscale
-    and masked through the logo, giving a monochrome gradient tint with depth.
-    iOS applies a user-chosen tint color over this at runtime.
+    For single-color logos: the user's background is desaturated and
+    masked through the logo shape, giving a monochrome gradient tint.
+    For multi-color logos: the logo itself is reduced to grayscale shades
+    and placed on the dark bg. iOS applies the user's chosen tint color
+    over the luminance of this asset at runtime.
     """
     dark_r, dark_g, dark_b = parse_hex(IOS_DARK_BG)
     dark_canvas = Image.new("RGBA", size, (dark_r, dark_g, dark_b, 255))
+
+    if not single_color:
+        gray_source = _to_grayscale_rgba(source)
+        return _place_icon_centered(dark_canvas, gray_source, icon_fraction)
 
     user_bg = create_background(size, bg_config)
     gray_bg = user_bg.convert("L").convert("RGBA")
@@ -190,15 +250,16 @@ def generate_all_assets(
     written: list[Path] = []
 
     bg_color = _resolve_bg_color(bg_config)
+    single_color = _is_single_color(source)
 
     for asset in ASSETS:
         size = asset["size"]
         variant = asset["variant"]
 
         if variant == "dark":
-            canvas = _make_ios_dark(size, bg_config, source, asset["icon_fraction"])
+            canvas = _make_ios_dark(size, bg_config, source, asset["icon_fraction"], single_color)
         elif variant == "tinted":
-            canvas = _make_ios_tinted(size, bg_config, source, asset["icon_fraction"])
+            canvas = _make_ios_tinted(size, bg_config, source, asset["icon_fraction"], single_color)
         elif variant == "background":
             canvas = create_background(size, bg_config)
         elif variant == "monochrome":

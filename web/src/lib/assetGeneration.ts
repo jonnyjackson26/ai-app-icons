@@ -160,6 +160,77 @@ function makeMonochrome(
   return canvas;
 }
 
+// Mirror of _is_single_color in api/src/ai_app_icons/assets.py: samples
+// opaque pixels, ignores low-saturation ones, and returns true only if
+// the saturated hues all fit within a 40° arc on the color wheel.
+function isSingleColor(
+  img: HTMLImageElement,
+  crop: CropBox,
+  hueArcDeg = 40,
+  satMin = 0.2,
+  alphaMin = 64,
+): boolean {
+  const sample = makeCanvas(96, 96);
+  const ctx = ctxOf(sample);
+  ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, 96, 96);
+  const data = ctx.getImageData(0, 0, 96, 96).data;
+
+  const hues: number[] = [];
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < alphaMin) continue;
+    const r = data[i] / 255;
+    const g = data[i + 1] / 255;
+    const b = data[i + 2] / 255;
+    const mx = Math.max(r, g, b);
+    const mn = Math.min(r, g, b);
+    if (mx === 0) continue;
+    const sat = (mx - mn) / mx;
+    if (sat < satMin) continue;
+    const delta = mx - mn;
+    let hue: number;
+    if (mx === r) hue = ((g - b) / delta) % 6;
+    else if (mx === g) hue = (b - r) / delta + 2;
+    else hue = (r - g) / delta + 4;
+    hue *= 60;
+    if (hue < 0) hue += 360;
+    hues.push(hue);
+  }
+
+  if (hues.length < 10) return true;
+
+  hues.sort((a, b) => a - b);
+  const n = hues.length;
+  let minSpan = 360;
+  for (let i = 0; i < n; i++) {
+    const end = i + n - 1;
+    const endVal = end < n ? hues[end] : hues[end - n] + 360;
+    const span = endVal - hues[i];
+    if (span < minSpan) minSpan = span;
+  }
+  return minSpan <= hueArcDeg;
+}
+
+function grayscaleLogoCanvas(
+  img: HTMLImageElement,
+  crop: CropBox,
+  dw: number,
+  dh: number,
+): HTMLCanvasElement {
+  const canvas = makeCanvas(dw, dh);
+  const ctx = ctxOf(canvas);
+  ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, dw, dh);
+  const imgData = ctx.getImageData(0, 0, dw, dh);
+  const d = imgData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const gray = Math.round(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114);
+    d[i] = gray;
+    d[i + 1] = gray;
+    d[i + 2] = gray;
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return canvas;
+}
+
 function makeIosDark(
   w: number,
   h: number,
@@ -167,18 +238,22 @@ function makeIosDark(
   img: HTMLImageElement,
   crop: CropBox,
   iconFraction: number,
+  singleColor: boolean,
 ): HTMLCanvasElement {
-  // Equivalent to PIL Image.composite(user_bg, dark_canvas, full_mask) where
-  // full_mask is the icon alpha pasted at the icon's paste offset.
   const canvas = makeCanvas(w, h);
   const ctx = ctxOf(canvas);
   ctx.fillStyle = IOS_DARK_BG;
   ctx.fillRect(0, 0, w, h);
 
+  if (!singleColor) {
+    const p = computeIconPlacement(crop, w, h, iconFraction);
+    ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, p.dx, p.dy, p.dw, p.dh);
+    return canvas;
+  }
+
   const userBg = buildBackgroundCanvas(w, h, bg);
   const mask = makeIconAlphaMask(img, crop, w, h, iconFraction);
 
-  // Clip the user bg to the icon alpha, then stamp the result over the dark fill.
   const masked = makeCanvas(w, h);
   const mctx = ctxOf(masked);
   mctx.drawImage(userBg, 0, 0);
@@ -196,11 +271,19 @@ function makeIosTinted(
   img: HTMLImageElement,
   crop: CropBox,
   iconFraction: number,
+  singleColor: boolean,
 ): HTMLCanvasElement {
   const canvas = makeCanvas(w, h);
   const ctx = ctxOf(canvas);
   ctx.fillStyle = IOS_DARK_BG;
   ctx.fillRect(0, 0, w, h);
+
+  if (!singleColor) {
+    const p = computeIconPlacement(crop, w, h, iconFraction);
+    const gray = grayscaleLogoCanvas(img, crop, p.dw, p.dh);
+    ctx.drawImage(gray, p.dx, p.dy);
+    return canvas;
+  }
 
   const userBg = buildBackgroundCanvas(w, h, bg);
   desaturateInPlace(userBg);
@@ -232,6 +315,7 @@ export async function generateAllAssets(
 ): Promise<AssetFile[]> {
   const img = await loadImage(iconBase64);
   const crop = tightCrop(img);
+  const singleColor = isSingleColor(img, crop);
 
   const out: AssetFile[] = [];
   for (const spec of ASSET_SPECS) {
@@ -239,9 +323,9 @@ export async function generateAllAssets(
     let canvas: HTMLCanvasElement;
 
     if (spec.variant === "dark") {
-      canvas = makeIosDark(w, h, bgConfig, img, crop, spec.iconFraction);
+      canvas = makeIosDark(w, h, bgConfig, img, crop, spec.iconFraction, singleColor);
     } else if (spec.variant === "tinted") {
-      canvas = makeIosTinted(w, h, bgConfig, img, crop, spec.iconFraction);
+      canvas = makeIosTinted(w, h, bgConfig, img, crop, spec.iconFraction, singleColor);
     } else if (spec.variant === "background") {
       canvas = makeBackgroundOnly(w, h, bgConfig);
     } else if (spec.variant === "monochrome") {
