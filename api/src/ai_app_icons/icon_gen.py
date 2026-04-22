@@ -1,4 +1,4 @@
-"""Generate and edit app icons using OpenAI's image API (gpt-image-1)."""
+"""Generate and edit app icons using OpenAI's image API (gpt-image-1-mini)."""
 
 from __future__ import annotations
 
@@ -111,7 +111,8 @@ def _decode_image(result) -> Image.Image:
 def generate_icon(
     description: str,
     *,
-    model: str = "gpt-image-1",
+    model: str = "gpt-image-1-mini",
+    quality: str = "low",
     size: str = "1024x1024",
     output_path: Path | None = None,
     mode: str | None = None,
@@ -127,6 +128,7 @@ def generate_icon(
         model=model,
         prompt=prompt,
         size=size,
+        quality=quality,
         background="transparent",
     )
 
@@ -143,6 +145,7 @@ def edit_icon(
     source: Image.Image,
     instruction: str,
     *,
+    quality: str = "low",
     size: str = "1024x1024",
 ) -> tuple[Image.Image, str]:
     """Edit an existing icon based on a text instruction.
@@ -152,13 +155,16 @@ def edit_icon(
     """
     client = _get_client()
 
-    # Encode the current image as base64
     buf = BytesIO()
     source.save(buf, format="PNG")
     image_b64 = base64.b64encode(buf.getvalue()).decode()
 
     prompt = _build_edit_prompt(instruction)
 
+    # The Responses API image_generation tool doesn't expose a model override —
+    # the image model is selected implicitly by the outer text model. So we
+    # can't pin this path to gpt-image-1-mini; the cost win here comes from
+    # quality="low" instead.
     response = client.responses.create(
         model="gpt-4o",
         input=[{
@@ -175,6 +181,7 @@ def edit_icon(
             "type": "image_generation",
             "background": "transparent",
             "size": size,
+            "quality": quality,
         }],
     )
 
