@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import Wizard from "@/components/Wizard";
-import { WizardProvider } from "@/components/WizardContext";
 import HydrationBoundary from "./HydrationBoundary";
 import {
   CHAT_ICONS_BUCKET,
@@ -77,16 +76,15 @@ export default async function ChatPage({
       : null,
   };
 
-  // `key` ensures state resets when navigating between chats (/c/a → /c/b).
-  // `initialDto` seeds provider state synchronously so SSR + client agree
-  // on first paint (no hydration mismatch, no setState-during-render).
+  // WizardProvider is hoisted to the (wizard) layout. HydrationBoundary
+  // pushes this page's DTO into the shared provider via hydrate(dto); the
+  // `key` forces it to remount on chat id change so the effect re-runs even
+  // if its parent stays mounted across /c/a → /c/b transitions.
   return (
-    <WizardProvider key={chatId} initialDto={dto}>
-      <HydrationBoundary dto={dto}>
-        <Suspense fallback={null}>
-          <Wizard />
-        </Suspense>
-      </HydrationBoundary>
-    </WizardProvider>
+    <HydrationBoundary key={chatId} dto={dto}>
+      <Suspense fallback={null}>
+        <Wizard />
+      </Suspense>
+    </HydrationBoundary>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ChevronsUpDown, CreditCard, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import { useModals } from "./ModalProvider";
 
@@ -10,11 +11,17 @@ interface Profile {
   limit: number | null;
 }
 
-// Shown in the header. Three states:
+interface Props {
+  collapsed?: boolean;
+}
+
+// Lives in the sidebar footer. Three states:
 //  - Auth disabled (self-host): render nothing.
-//  - Auth enabled, logged out: "Sign in" button that opens AuthModal.
-//  - Auth enabled, logged in: tier chip + dropdown menu.
-export default function UserBadge() {
+//  - Auth enabled, logged out: "Sign in" CTA.
+//  - Auth enabled, logged in: stacked profile chip with email + tier/usage.
+// Dropdown opens upward (over the chip) so it doesn't get clipped by the
+// sidebar bottom edge.
+export default function UserBadge({ collapsed = false }: Props) {
   const authEnabled = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
   const [email, setEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -97,9 +104,12 @@ export default function UserBadge() {
       <button
         type="button"
         onClick={() => openAuth("sign-in")}
-        className="rounded-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+        className={`w-full flex items-center ${
+          collapsed ? "justify-center" : "justify-center gap-2"
+        } h-9 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer`}
       >
-        Sign in
+        {!collapsed && <span>Sign in</span>}
+        {collapsed && <LogOut className="h-4 w-4 rotate-180" aria-hidden="true" />}
       </button>
     );
   }
@@ -112,29 +122,58 @@ export default function UserBadge() {
         : "Free";
   const usageLabel =
     profile && profile.limit !== null
-      ? `${profile.used}/${profile.limit}`
+      ? `${profile.used} / ${profile.limit} this week`
       : profile
-        ? `${profile.used}`
+        ? `${profile.used} this week`
         : "";
+  const initial = (email[0] ?? "?").toUpperCase();
 
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+        aria-label="Account menu"
+        title={collapsed ? email : undefined}
+        className={`w-full flex items-center ${
+          collapsed ? "justify-center" : "gap-2"
+        } px-1.5 py-1.5 rounded-lg hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer`}
       >
-        <span className="font-semibold">{tierLabel}</span>
-        {usageLabel && (
-          <span className="text-zinc-500 dark:text-zinc-400">• {usageLabel}</span>
+        <span className="shrink-0 h-7 w-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs font-semibold flex items-center justify-center">
+          {initial}
+        </span>
+        {!collapsed && (
+          <>
+            <span className="flex-1 min-w-0 text-left">
+              <span className="block text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                {email}
+              </span>
+              <span className="block text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
+                {tierLabel}
+                {usageLabel && <> · {usageLabel}</>}
+              </span>
+            </span>
+            <ChevronsUpDown
+              className="h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400 shrink-0"
+              aria-hidden="true"
+            />
+          </>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-64 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden z-20">
+        <div
+          className={`absolute ${
+            collapsed ? "left-full ml-2 bottom-0" : "left-0 right-0 bottom-full mb-1"
+          } rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden z-30 min-w-[220px]`}
+        >
           <div className="px-3 py-2 border-b border-zinc-200 dark:border-zinc-800">
-            <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="truncate text-xs font-medium text-zinc-900 dark:text-zinc-100">
               {email}
+            </p>
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
+              {tierLabel}
+              {usageLabel && <> · {usageLabel}</>}
             </p>
           </div>
           <button
@@ -143,15 +182,17 @@ export default function UserBadge() {
               setOpen(false);
               openBilling("default");
             }}
-            className="block w-full text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
+            className="flex w-full items-center gap-2 text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
           >
+            <CreditCard className="h-4 w-4" aria-hidden="true" />
             Billing & plan
           </button>
           <button
             type="button"
             onClick={signOut}
-            className="w-full border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
+            className="flex w-full items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
           >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
             Sign out
           </button>
         </div>

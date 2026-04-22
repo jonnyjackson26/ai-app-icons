@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useWizard } from "@/components/WizardContext";
 import { createClient } from "@/lib/supabase/browser";
 import { CHAT_ICONS_BUCKET } from "@/lib/chatDb";
@@ -117,32 +117,61 @@ async function getCurrentUserId(): Promise<string | null> {
 export function useChatPersistence(): UseChatPersistence {
   const { data, setChatId, update, updateMessage } = useWizard();
 
+  // Mirror the latest chatId in a ref so ensureChatId reads the freshest
+  // value regardless of which render's closure called it. Without this,
+  // an assistant response that arrives after a state update — but via a
+  // callback captured before that update — would see null and create a
+  // duplicate chat row.
+  const chatIdRef = useRef<string | null>(data.chatId);
+  useEffect(() => {
+    chatIdRef.current = data.chatId;
+  }, [data.chatId]);
+
+  // Shared in-flight createChat promise. Two parallel callers (user msg +
+  // assistant icon) both invoke ensureChatId; without this guard they each
+  // race an insert.
+  const creationPromiseRef = useRef<Promise<string | null> | null>(null);
+
   const ensureChatId = useCallback(
     async (seedTitle?: string): Promise<string | null> => {
       if (!isEnabled()) return null;
-      if (data.chatId) return data.chatId;
-      const userId = await getCurrentUserId();
-      if (!userId) return null; // anonymous — stay in-memory
-      try {
-        const chat = await createChat({ title: seedTitle, mode: data.mode });
-        setChatId(chat.id);
-        // Update URL in place. `router.replace` would trigger a Next.js
-        // server fetch of /c/[id], unmounting this provider and destroying
-        // the just-appended user message that hasn't been persisted yet
-        // — the new page would then server-render an empty chat.
-        // `history.replaceState` just updates the address bar.
-        if (typeof window !== "undefined") {
-          const url = new URL(window.location.href);
-          url.pathname = `/c/${chat.id}`;
-          window.history.replaceState(null, "", url.pathname + url.search);
+      if (chatIdRef.current) return chatIdRef.current;
+      if (creationPromiseRef.current) return creationPromiseRef.current;
+
+      const promise = (async () => {
+        const userId = await getCurrentUserId();
+        if (!userId) return null; // anonymous — stay in-memory
+        try {
+          const chat = await createChat({ title: seedTitle, mode: data.mode });
+          // Update the ref synchronously before any other async gap so the
+          // next caller sees the id immediately.
+          chatIdRef.current = chat.id;
+          setChatId(chat.id);
+          // Update URL in place. `router.replace` would trigger a Next.js
+          // server fetch of /c/[id], unmounting this provider and destroying
+          // the just-appended user message that hasn't been persisted yet
+          // — the new page would then server-render an empty chat.
+          // `history.replaceState` just updates the address bar.
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            url.pathname = `/c/${chat.id}`;
+            window.history.replaceState(null, "", url.pathname + url.search);
+          }
+          return chat.id;
+        } catch (e) {
+          console.warn("[chatPersistence] createChat failed:", e);
+          return null;
         }
-        return chat.id;
-      } catch (e) {
-        console.warn("[chatPersistence] createChat failed:", e);
-        return null;
+      })();
+
+      creationPromiseRef.current = promise;
+      try {
+        return await promise;
+      } finally {
+        creationPromiseRef.current = null;
       }
     },
-    [data.chatId, data.mode, setChatId],
+    [data.mode, setChatId],
   );
 
   const persistUserMessage = useCallback(
@@ -242,9 +271,10 @@ export function useChatPersistence(): UseChatPersistence {
       if (!userId) return;
       // Don't lazy-create a chat for an assistant text (e.g. error message)
       // if there isn't one yet — that would be a weird empty transcript.
-      if (!data.chatId) return;
+      const chatId = chatIdRef.current;
+      if (!chatId) return;
       try {
-        await appendMessageRow(data.chatId, {
+        await appendMessageRow(chatId, {
           id: msg.id,
           role: "assistant",
           kind: "text",
@@ -256,19 +286,20 @@ export function useChatPersistence(): UseChatPersistence {
         console.warn("[chatPersistence] persist assistant text failed:", e);
       }
     },
-    [data.chatId],
+    [],
   );
 
   const patchCurrentChat = useCallback(
     async (body: Parameters<typeof patchChat>[1]) => {
-      if (!isEnabled() || !data.chatId) return;
+      const chatId = chatIdRef.current;
+      if (!isEnabled() || !chatId) return;
       try {
-        await patchChat(data.chatId, body);
+        await patchChat(chatId, body);
       } catch (e) {
         console.warn("[chatPersistence] patchCurrentChat failed:", e);
       }
     },
-    [data.chatId],
+    [],
   );
 
   const hydrateIconBase64 = useCallback(async () => {

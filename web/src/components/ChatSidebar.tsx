@@ -1,10 +1,19 @@
 "use client";
 
 import { useCallback, useState, useSyncExternalStore } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import {
+  Menu,
+  MessagesSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
+  SquarePen,
+  X,
+} from "lucide-react";
 import { useChats } from "@/components/ChatsContext";
+import { useWizard } from "@/components/WizardContext";
 import ChatSidebarItem from "@/components/ChatSidebarItem";
+import UserBadge from "@/components/UserBadge";
 
 const COLLAPSE_STORAGE_KEY = "aai_sidebar_collapsed_v1";
 
@@ -32,6 +41,8 @@ function getCollapsedServerSnapshot(): boolean {
 
 export default function ChatSidebar() {
   const { chats, signedIn } = useChats();
+  const { reset } = useWizard();
+  const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -49,6 +60,21 @@ export default function ChatSidebar() {
       window.dispatchEvent(new StorageEvent("storage", { key: COLLAPSE_STORAGE_KEY }));
     } catch {}
   }, []);
+
+  const onNewChat = useCallback(() => {
+    // Reset the shared provider first so the UI clears immediately.
+    reset();
+    // Sync the URL. router.replace handles the real navigation case
+    // (user was on /c/xyz); the explicit history.replaceState below
+    // handles the "synthetic URL" case (ensureChatId used replaceState
+    // without telling Next.js, so router.replace('/') is a no-op but
+    // the URL bar still shows /c/xyz).
+    router.replace("/");
+    if (typeof window !== "undefined" && window.location.pathname !== "/") {
+      window.history.replaceState(null, "", "/");
+    }
+    setMobileOpen(false);
+  }, [reset, router]);
 
   // Hidden entirely for anonymous users. A future enhancement could show a
   // sign-in CTA in the shell instead of null.
@@ -68,9 +94,9 @@ export default function ChatSidebar() {
         type="button"
         aria-label="Open chats"
         onClick={() => setMobileOpen(true)}
-        className="md:hidden fixed top-3 left-3 z-30 rounded-md bg-white/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 px-2 py-1 text-sm shadow cursor-pointer"
+        className="md:hidden fixed top-3 left-3 z-30 rounded-md bg-white/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 p-2 shadow cursor-pointer"
       >
-        ☰
+        <Menu className="h-4 w-4" aria-hidden="true" />
       </button>
 
       <div className={mobileClass} onClick={() => setMobileOpen(false)}>
@@ -80,32 +106,73 @@ export default function ChatSidebar() {
           }`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center gap-1 p-2 border-b border-zinc-200 dark:border-zinc-800">
-            <Link
-              href="/"
-              prefetch={false}
-              className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer ${
-                collapsed ? "" : "flex-1"
-              }`}
-              onClick={() => setMobileOpen(false)}
-            >
-              <span className="text-base leading-none">＋</span>
-              {!collapsed && <span>New chat</span>}
-            </Link>
+          {/* Header: app name (hidden when collapsed) + collapse/expand toggle */}
+          <div
+            className={`flex items-center ${
+              collapsed ? "justify-center" : "justify-between"
+            } px-3 h-12 border-b border-zinc-200 dark:border-zinc-800`}
+          >
+            {!collapsed && (
+              <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                AI App Icons
+              </span>
+            )}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                onClick={() => persistCollapsed(!collapsed)}
+                className="hidden md:inline-flex items-center justify-center p-1.5 rounded-md text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors duration-150 cursor-pointer"
+              >
+                {collapsed ? (
+                  <PanelLeftOpen className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+              {/* Mobile-only close button inside the drawer */}
+              <button
+                type="button"
+                aria-label="Close chats"
+                onClick={() => setMobileOpen(false)}
+                className="md:hidden inline-flex items-center justify-center p-1.5 rounded-md text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors duration-150 cursor-pointer"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          {/* New chat button — full-width prominent when expanded, icon-only when collapsed */}
+          <div className="p-2">
             <button
               type="button"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              onClick={() => persistCollapsed(!collapsed)}
-              className="hidden md:inline-flex rounded-md px-2 py-1 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+              onClick={onNewChat}
+              aria-label="New chat"
+              title="New chat"
+              className={`w-full flex items-center ${
+                collapsed ? "justify-center" : "gap-2 justify-start px-3"
+              } h-9 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-white transition-colors duration-150 cursor-pointer`}
             >
-              {collapsed ? "»" : "«"}
+              <SquarePen className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {!collapsed && <span>New chat</span>}
             </button>
           </div>
-          <nav className="flex-1 overflow-y-auto p-2 space-y-1">
+
+          {/* Chat list */}
+          <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
             {chats.length === 0 ? (
               !collapsed && (
-                <div className="text-xs text-zinc-500 dark:text-zinc-500 px-2 py-3">
-                  No chats yet. Your conversations will appear here.
+                <div className="flex flex-col items-center justify-center gap-2 px-3 py-10 text-center">
+                  <MessagesSquare
+                    className="h-6 w-6 text-zinc-400 dark:text-zinc-600"
+                    aria-hidden="true"
+                  />
+                  <div className="text-xs text-zinc-500 dark:text-zinc-500">
+                    No chats yet.
+                    <br />
+                    Your conversations will appear here.
+                  </div>
                 </div>
               )
             ) : (
@@ -119,6 +186,11 @@ export default function ChatSidebar() {
               ))
             )}
           </nav>
+
+          {/* Footer: profile chip */}
+          <div className="shrink-0 border-t border-zinc-200 dark:border-zinc-800 p-2">
+            <UserBadge collapsed={collapsed} />
+          </div>
         </aside>
       </div>
     </>

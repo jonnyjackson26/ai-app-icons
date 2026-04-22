@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import MessageList from "./MessageList";
 import Composer from "./Composer";
 import Suggestions from "./Suggestions";
@@ -98,12 +99,20 @@ export default function ChatView() {
     return () => cancelPromptStream();
   }, [cancelPromptStream]);
 
+  const pathname = usePathname();
+
   // Welcome stream, once on mount — only when we're genuinely starting a
   // fresh conversation. Hydrated chats always have messages pre-populated
-  // so the length guard keeps us quiet.
+  // so the length guard keeps us quiet. We also short-circuit on /c/[id]
+  // routes so the brief render window before HydrationBoundary's effect
+  // lands doesn't spawn a welcome message that'll immediately be replaced.
   useEffect(() => {
     if (welcomeStartedRef.current) return;
     if (data.isHydrating) return;
+    if (pathname.startsWith("/c/")) {
+      welcomeStartedRef.current = true;
+      return;
+    }
     // Any hydrated chat has chatId set; belt-and-braces against the race
     // where HydrationBoundary's setState-during-render lands late.
     if (data.chatId) {
@@ -269,9 +278,12 @@ export default function ChatView() {
       // Fire-and-forget persistence — the UI already has the icon on screen,
       // Storage upload + DB insert happens in the background.
       persistAssistantIcon(iconMsg, iconBase64).then(() => {
-        if (data.chatId) {
+        // Read the freshest chatId via ref — the closure could have been
+        // captured before the lazy chat creation landed in context state.
+        const chatId = chatIdRef.current;
+        if (chatId) {
           upsertLocal({
-            id: data.chatId,
+            id: chatId,
             currentIconPath: null,
             lastMessageAt: new Date().toISOString(),
           });
@@ -280,7 +292,7 @@ export default function ChatView() {
         }
       });
     },
-    [appendMessage, persistAssistantIcon, data.chatId, upsertLocal, refreshChats],
+    [appendMessage, persistAssistantIcon, upsertLocal, refreshChats],
   );
 
   const appendAssistantError = useCallback(

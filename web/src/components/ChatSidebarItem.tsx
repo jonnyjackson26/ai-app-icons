@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import type { ChatSummary } from "@/lib/chatDb";
 import { useChats } from "@/components/ChatsContext";
 
@@ -56,12 +57,19 @@ export default function ChatSidebarItem({ chat, active, collapsed }: Props) {
 
   const content = (
     <div
-      className={`group flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
+      className={`group relative flex items-center gap-2 pl-2 pr-1.5 py-1.5 rounded-md text-sm transition-colors duration-150 ${
         active
-          ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
-          : "hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300"
+          ? "bg-zinc-200/70 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+          : "hover:bg-zinc-200/40 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300"
       }`}
+      title={collapsed ? chat.title : undefined}
     >
+      {active && (
+        <span
+          aria-hidden="true"
+          className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-blue-500"
+        />
+      )}
       <div
         className="shrink-0 w-8 h-8 rounded-md bg-zinc-100 dark:bg-zinc-800 overflow-hidden"
         style={{
@@ -115,13 +123,13 @@ export default function ChatSidebarItem({ chat, active, collapsed }: Props) {
                 e.stopPropagation();
                 setMenuOpen((v) => !v);
               }}
-              className="opacity-0 group-hover:opacity-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded px-1 text-xs leading-none py-0.5 cursor-pointer"
+              className="inline-flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-zinc-300/60 dark:hover:bg-zinc-700 rounded p-1 transition-colors duration-150 cursor-pointer"
             >
-              ⋯
+              <MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
             {menuOpen && (
               <div
-                className="absolute right-0 top-full mt-1 z-20 min-w-[120px] rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg text-sm"
+                className="absolute right-0 top-full mt-1 z-20 min-w-[140px] rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg text-sm overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
@@ -132,8 +140,9 @@ export default function ChatSidebarItem({ chat, active, collapsed }: Props) {
                     setDraftTitle(chat.title);
                     setRenaming(true);
                   }}
-                  className="block w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                  className="flex w-full items-center gap-2 text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
                 >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                   Rename
                 </button>
                 <button
@@ -143,8 +152,9 @@ export default function ChatSidebarItem({ chat, active, collapsed }: Props) {
                     setMenuOpen(false);
                     onDelete();
                   }}
-                  className="block w-full text-left px-3 py-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
+                  className="flex w-full items-center gap-2 text-left px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors duration-150 cursor-pointer"
                 >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                   Delete
                 </button>
               </div>
