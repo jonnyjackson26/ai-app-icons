@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import MessageList from "./MessageList";
 import Composer from "./Composer";
 import Suggestions from "./Suggestions";
+import IconEmojiPickerModal from "@/components/IconEmojiPickerModal";
 import { useWizard } from "@/components/WizardContext";
 import { useChats } from "@/components/ChatsContext";
 import { useModals } from "@/components/ModalProvider";
@@ -64,6 +65,7 @@ export default function ChatView() {
   const [sending, setSending] = useState(false);
   const [sendingOp, setSendingOp] = useState<"generate" | "refine" | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   // Counter handles nested dragenter/dragleave from child elements without flicker.
   const dragDepthRef = useRef(0);
 
@@ -206,6 +208,10 @@ export default function ChatView() {
     fileRef.current?.click();
   }, []);
 
+  const onPickEmojiOrIcon = useCallback(() => {
+    setPickerOpen(true);
+  }, []);
+
   const handleAlreadyHaveFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -316,6 +322,25 @@ export default function ChatView() {
       });
     },
     [appendMessage, persistAssistantIcon, upsertLocal, refreshChats],
+  );
+
+  const handlePickerSelection = useCallback(
+    (base64: string, label: string) => {
+      setPickerOpen(false);
+      update({ iconBase64: base64, iconUrl: null, iconPath: null, editMessage: "", error: null });
+      setStep("background");
+      ensureChatId(label).then((chatId) => {
+        if (!chatId) return;
+        upsertLocal({
+          id: chatId,
+          title: label,
+          thumbnailUrl: `data:image/png;base64,${base64}`,
+          lastMessageAt: new Date().toISOString(),
+        });
+      });
+      appendAndPersistAssistantIcon(base64);
+    },
+    [update, setStep, ensureChatId, upsertLocal, appendAndPersistAssistantIcon],
   );
 
   const appendAssistantError = useCallback(
@@ -634,6 +659,7 @@ export default function ChatView() {
             onPickPrompt={onPickPrompt}
             onPickBackground={onPickBackground}
             onAlreadyHaveIcon={onAlreadyHaveIcon}
+            onPickEmojiOrIcon={onPickEmojiOrIcon}
           />
         </div>
         <div className="pointer-events-auto relative z-20">
@@ -658,6 +684,12 @@ export default function ChatView() {
           onChange={handleAlreadyHaveFile}
         />
       </div>
+
+      <IconEmojiPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onPick={handlePickerSelection}
+      />
     </div>
   );
 }

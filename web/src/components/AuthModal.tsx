@@ -192,6 +192,28 @@ export default function AuthModal({ open, onClose, reason }: AuthModalProps) {
         {error && (
           <p className="mt-3 text-xs text-red-600 dark:text-red-400">{error}</p>
         )}
+
+        <p className="mt-5 text-[11px] leading-5 text-zinc-500 dark:text-zinc-400">
+          By continuing, you agree to our{" "}
+          <a
+            href="/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-zinc-700 dark:hover:text-zinc-200"
+          >
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-zinc-700 dark:hover:text-zinc-200"
+          >
+            Privacy Policy
+          </a>
+          .
+        </p>
       </div>
     </Modal>
   );

@@ -9,6 +9,7 @@ interface SuggestionsProps {
   onPickPrompt: (prompt: string) => void;
   onPickBackground: () => void;
   onAlreadyHaveIcon: () => void;
+  onPickEmojiOrIcon: () => void;
 }
 
 export default function Suggestions({
@@ -16,6 +17,7 @@ export default function Suggestions({
   onPickPrompt,
   onPickBackground,
   onAlreadyHaveIcon,
+  onPickEmojiOrIcon,
 }: SuggestionsProps) {
   // Pick on the client only so SSR and first client render agree (Math.random
   // would otherwise produce a hydration mismatch). Reshuffles once when the
@@ -28,29 +30,48 @@ export default function Suggestions({
     setPicks(pickTwoRandom(pool));
   }, [hasIcon]);
 
-  const thirdLabel = hasIcon
-    ? "Looks good! Let's pick a background"
-    : "I already have an icon, just want the asset generation";
-  const onThirdClick = hasIcon ? onPickBackground : onAlreadyHaveIcon;
+  // Once the user has an icon, the only suggestion that matters is "move on
+  // to background" — the prompt suggestions and the alternate-input chips
+  // would just be noise.
+  if (hasIcon) {
+    return (
+      <div className="grid grid-cols-1 gap-2 px-4 pb-2 max-w-2xl mx-auto w-full">
+        <Chip
+          label="Looks good! Let's pick a background"
+          onClick={onPickBackground}
+          variant="glowing"
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="grid grid-cols-3 gap-2 px-4 pb-2 max-w-2xl mx-auto w-full">
-      {picks ? (
-        <>
-          <Chip label={picks[0]} onClick={() => onPickPrompt(picks[0])} />
-          <Chip label={picks[1]} onClick={() => onPickPrompt(picks[1])} />
-        </>
-      ) : (
-        <>
-          <ChipSkeleton />
-          <ChipSkeleton />
-        </>
-      )}
-      <Chip
-        label={thirdLabel}
-        onClick={onThirdClick}
-        variant={hasIcon ? "glowing" : "emphasis"}
-      />
+    <div className="grid gap-2 px-4 pb-2 max-w-2xl mx-auto w-full">
+      <div className="grid grid-cols-2 gap-2">
+        {picks ? (
+          <>
+            <Chip label={picks[0]} onClick={() => onPickPrompt(picks[0])} />
+            <Chip label={picks[1]} onClick={() => onPickPrompt(picks[1])} />
+          </>
+        ) : (
+          <>
+            <ChipSkeleton />
+            <ChipSkeleton />
+          </>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Chip
+          label="Pick an emoji or icon"
+          onClick={onPickEmojiOrIcon}
+          variant="emphasis"
+        />
+        <Chip
+          label="I already have an icon, just want assets"
+          onClick={onAlreadyHaveIcon}
+          variant="emphasis"
+        />
+      </div>
     </div>
   );
 }
