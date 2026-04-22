@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import { downloadAllAsZip, downloadBase64Image } from "@/lib/download";
@@ -33,6 +34,7 @@ const VARIANT_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function ExportStep() {
+  const router = useRouter();
   const { data, update, reset, setStep } = useWizard();
   const { persistAssets, rehydrateStoredAssets } = useChatPersistence();
   const {
@@ -150,8 +152,15 @@ export default function ExportStep() {
   };
 
   const handleCreateAnother = () => {
-    // reset() already flips currentStep back to "chat" and preserves CLI params.
+    // Mirrors the sidebar "New chat" button: clear wizard state, then land on /
+    // so the URL matches the fresh transcript. history.replaceState is the
+    // fallback for the case where ensureChatId synthetically updated the URL
+    // to /c/[id] without telling Next's router.
     reset();
+    router.replace("/");
+    if (typeof window !== "undefined" && window.location.pathname !== "/") {
+      window.history.replaceState(null, "", "/");
+    }
   };
 
   const handleSendToCli = async () => {
@@ -309,12 +318,9 @@ export default function ExportStep() {
         </div>
       ) : (
         <>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex justify-center">
             <Button onClick={() => expoConfig && downloadAllAsZip(assets, expoConfig)}>
               Download All (.zip)
-            </Button>
-            <Button variant="ghost" onClick={handleCreateAnother}>
-              Create another icon
             </Button>
           </div>
 
@@ -428,6 +434,13 @@ export default function ExportStep() {
         </div>
       )}
 
+      {!inCliMode && (
+        <div className="flex justify-center pt-2">
+          <Button variant="ghost" onClick={handleCreateAnother}>
+            Create another icon
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
