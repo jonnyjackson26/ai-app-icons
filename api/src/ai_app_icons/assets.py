@@ -249,12 +249,14 @@ def generate_all_assets(
     """Generate all asset sizes from an in-memory source image.
 
     *ios_single_color_style* only kicks in when the logo is detected as
-    single-color; it controls the iOS dark/tinted variants:
+    single-color; it controls the iOS **dark** variant:
       - ``"masked"`` (default): the brand gradient shows through the
         logo silhouette — the classic look.
-      - ``"solid"``: the logo is placed directly on the iOS dark canvas
-        (for tinted, it becomes grayscale). Same treatment as multi-
-        color logos, for users who prefer that look.
+      - ``"solid"``: the logo is placed directly on the iOS dark canvas,
+        preserving its one brand color.
+    The iOS **tinted** variant always uses the masked treatment for
+    single-color logos (desaturated gradient through the silhouette),
+    since iOS's runtime tint relies on that luminance gradient.
 
     Returns (list of written file paths, resolved background color hex).
     """
@@ -263,16 +265,17 @@ def generate_all_assets(
 
     bg_color = _resolve_bg_color(bg_config)
     single_color = is_single_color(source)
-    use_background = single_color and ios_single_color_style == "masked"
+    dark_use_background = single_color and ios_single_color_style == "masked"
+    tinted_use_background = single_color
 
     for asset in ASSETS:
         size = asset["size"]
         variant = asset["variant"]
 
         if variant == "dark":
-            canvas = _make_ios_dark(size, bg_config, source, asset["icon_fraction"], use_background)
+            canvas = _make_ios_dark(size, bg_config, source, asset["icon_fraction"], dark_use_background)
         elif variant == "tinted":
-            canvas = _make_ios_tinted(size, bg_config, source, asset["icon_fraction"], use_background)
+            canvas = _make_ios_tinted(size, bg_config, source, asset["icon_fraction"], tinted_use_background)
         elif variant == "background":
             canvas = create_background(size, bg_config)
         elif variant == "monochrome":

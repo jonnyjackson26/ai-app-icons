@@ -323,10 +323,12 @@ export async function generateAllAssets(
 ): Promise<AssetFile[]> {
   const img = await loadImage(iconBase64);
   const crop = tightCrop(img);
-  // useBackground: show the brand gradient through the silhouette. Only true
-  // for single-color logos whose owner hasn't opted into the 'solid' style.
-  const useBackground =
-    isSingleColor(img, crop) && iosSingleColorStyle === "masked";
+  const singleColor = isSingleColor(img, crop);
+  // Dark honors the user's style choice; tinted always uses the masked
+  // gradient for single-color logos so iOS's runtime tint has luminance
+  // variation to work with.
+  const darkUseBackground = singleColor && iosSingleColorStyle === "masked";
+  const tintedUseBackground = singleColor;
 
   const out: AssetFile[] = [];
   for (const spec of ASSET_SPECS) {
@@ -334,9 +336,9 @@ export async function generateAllAssets(
     let canvas: HTMLCanvasElement;
 
     if (spec.variant === "dark") {
-      canvas = makeIosDark(w, h, bgConfig, img, crop, spec.iconFraction, useBackground);
+      canvas = makeIosDark(w, h, bgConfig, img, crop, spec.iconFraction, darkUseBackground);
     } else if (spec.variant === "tinted") {
-      canvas = makeIosTinted(w, h, bgConfig, img, crop, spec.iconFraction, useBackground);
+      canvas = makeIosTinted(w, h, bgConfig, img, crop, spec.iconFraction, tintedUseBackground);
     } else if (spec.variant === "background") {
       canvas = makeBackgroundOnly(w, h, bgConfig);
     } else if (spec.variant === "monochrome") {

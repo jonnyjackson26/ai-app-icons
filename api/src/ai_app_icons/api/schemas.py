@@ -57,10 +57,11 @@ class AssetsRequest(BaseModel):
     ios_single_color_style: str = Field(
         default="masked",
         description=(
-            "How to render iOS dark/tinted when the logo is single-color. "
-            "'masked' (default) lets the brand gradient show through the "
-            "silhouette; 'solid' places the logo directly on the iOS dark "
-            "canvas. Ignored for multi-color logos."
+            "How to render the iOS dark variant when the logo is "
+            "single-color. 'masked' (default) lets the brand gradient "
+            "show through the silhouette; 'solid' places the logo "
+            "directly on the iOS dark canvas. Ignored for multi-color "
+            "logos and never affects iOS tinted."
         ),
     )
 

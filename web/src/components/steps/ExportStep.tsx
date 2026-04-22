@@ -423,7 +423,7 @@ export default function ExportStep() {
           {group.platform === "ios" && isSingleColorLogo && iconBase64 && (
             <div className="flex flex-wrap items-center gap-3 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2">
               <span className="text-xs text-zinc-600 dark:text-zinc-300">
-                Dark &amp; tinted style:
+                Dark style:
               </span>
               <div className="inline-flex rounded-md border border-zinc-200 dark:border-zinc-700 overflow-hidden">
                 {(["masked", "solid"] as const).map((style) => {
