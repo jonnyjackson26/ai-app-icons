@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useState } from "react";
 import { PRESETS } from "@/lib/backgroundPresets";
 import { DEFAULT_MODE_ID } from "@/lib/generationModes";
 import type { ChatMessage } from "@/lib/chatTypes";
-import type { ChatDetailDto, ChatRow } from "@/lib/chatDb";
+import type { ChatDetailDto, ChatRow, StoredAsset } from "@/lib/chatDb";
 import type { AssetFile, BackgroundConfig } from "@/lib/types";
 
 export const STEPS = ["chat", "background", "export"] as const;
@@ -21,6 +21,11 @@ export interface WizardData {
   editMessage: string;
   backgroundConfig: BackgroundConfig;
   assets: AssetFile[] | null;
+  // Hydrated metadata-only asset list from chats.assets. Used by ExportStep to
+  // decide whether to re-generate or rehydrate from Storage, and by
+  // Wizard REACHED.export so the step indicator doesn't flicker during hydration.
+  storedAssets: StoredAsset[] | null;
+  hasAssets: boolean;
   expoConfig: Record<string, unknown> | null;
   backgroundColor: string | null;
   error: string | null;
@@ -49,6 +54,8 @@ const initialData: WizardData = {
     direction: PRESETS[0].direction,
   },
   assets: null,
+  storedAssets: null,
+  hasAssets: false,
   expoConfig: null,
   backgroundColor: null,
   error: null,
@@ -133,13 +140,19 @@ function dataFromDto(dto: ChatDetailDto, prev: WizardData): WizardData {
     // assets on disk lack image_base64; export step uses iconUrl-derived
     // previews. Full base64 gets re-hydrated on demand (see chatPersistence).
     assets: null,
+    storedAssets: chat.assets,
+    hasAssets: !!chat.assets && chat.assets.length > 0,
     expoConfig: chat.expoConfig ?? null,
     backgroundColor: chat.backgroundColor ?? null,
     cliCallback: prev.cliCallback,
     cliToken: prev.cliToken,
     cliProjectName: prev.cliProjectName,
     messages: dto.messages.map(messageFromDb),
-    currentStep: "chat",
+    currentStep: chat.assets
+      ? "export"
+      : chat.backgroundConfig
+        ? "background"
+        : "chat",
     chatId: chat.id,
     isHydrating: false,
   };

@@ -5,6 +5,11 @@ import Link from "next/link";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import type { ChatSummary } from "@/lib/chatDb";
 import { useChats } from "@/components/ChatsContext";
+import { backgroundToCss } from "@/lib/backgroundCss";
+
+const CHECKER_BG =
+  "linear-gradient(45deg, #e5e7eb 25%, transparent 25%), " +
+  "linear-gradient(-45deg, #e5e7eb 25%, transparent 25%)";
 
 interface Props {
   chat: ChatSummary;
@@ -72,12 +77,11 @@ export default function ChatSidebarItem({ chat, active, collapsed }: Props) {
       )}
       <div
         className="shrink-0 w-8 h-8 rounded-md bg-zinc-100 dark:bg-zinc-800 overflow-hidden"
-        style={{
-          backgroundImage:
-            "linear-gradient(45deg, #e5e7eb 25%, transparent 25%), " +
-            "linear-gradient(-45deg, #e5e7eb 25%, transparent 25%)",
-          backgroundSize: "8px 8px",
-        }}
+        style={
+          backgroundToCss(chat.backgroundConfig)
+            ? { background: backgroundToCss(chat.backgroundConfig) ?? undefined }
+            : { backgroundImage: CHECKER_BG, backgroundSize: "8px 8px" }
+        }
       >
         {chat.thumbnailUrl && (
           // eslint-disable-next-line @next/next/no-img-element

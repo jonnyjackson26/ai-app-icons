@@ -11,10 +11,13 @@ import { useWizard, type Step, type WizardData } from "@/components/WizardContex
 
 // What must be in context for the step's component to render safely.
 // Used by the render-time coerce and the reconciler effect.
+// iconUrl is accepted alongside iconBase64 so a hydrated chat can resume at
+// its farthest step immediately — base64 is fetched async by HydrationBoundary
+// and the step components show a spinner until it arrives.
 const REQUIRES: Record<Step, (d: WizardData) => boolean> = {
   chat: () => true,
-  background: (d) => !!d.iconBase64,
-  export: (d) => !!d.iconBase64,
+  background: (d) => !!(d.iconBase64 || d.iconUrl),
+  export: (d) => !!(d.iconBase64 || d.iconUrl),
 };
 
 // Whether a step is reachable via the step indicator without redoing work.
@@ -22,8 +25,8 @@ const REQUIRES: Record<Step, (d: WizardData) => boolean> = {
 // to cached assets, never silently trigger a fresh generation.
 export const REACHED: Record<Step, (d: WizardData) => boolean> = {
   chat: () => true,
-  background: (d) => !!d.iconBase64,
-  export: (d) => !!d.assets,
+  background: (d) => !!(d.iconBase64 || d.iconUrl),
+  export: (d) => !!d.assets || d.hasAssets,
 };
 
 function isLoopbackHttpUrl(raw: string): boolean {
@@ -86,7 +89,7 @@ export default function Wizard() {
               AI App Icons
             </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-tight">
-              Generate app icon assets specifically for Expo apps
+              For Expo apps
             </p>
           </div>
           <div className="flex-1 sm:flex sm:justify-end sm:items-center">
@@ -118,8 +121,8 @@ export default function Wizard() {
       {step !== "chat" && (
         <div className="flex-1 min-h-0 overflow-y-auto px-4">
           <div className="w-full max-w-2xl mx-auto py-6">
-            {step === "background" && data.iconBase64 && <BackgroundStep />}
-            {step === "export" && data.iconBase64 && <ExportStep />}
+            {step === "background" && <BackgroundStep />}
+            {step === "export" && <ExportStep />}
           </div>
         </div>
       )}

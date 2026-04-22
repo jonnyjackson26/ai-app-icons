@@ -3,9 +3,14 @@
 import { useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
-import { generateAssets } from "@/lib/api";
 import { downloadAllAsZip, downloadBase64Image } from "@/lib/download";
 import { useWizard } from "@/components/WizardContext";
+import { useChatPersistence } from "@/lib/chatPersistence";
+import {
+  buildExpoConfig,
+  generateAllAssets,
+  resolveBgColor,
+} from "@/lib/assetGeneration";
 
 const PLATFORM_ORDER = ["general", "ios", "android", "web"] as const;
 const PLATFORM_LABELS: Record<string, string> = {
@@ -23,9 +28,11 @@ const VARIANT_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function ExportStep() {
   const { data, update, reset, setStep } = useWizard();
-  const iconBase64 = data.iconBase64!;
+  const { persistAssets, rehydrateStoredAssets } = useChatPersistence();
   const {
+    iconBase64,
     assets,
+    storedAssets,
     expoConfig,
     backgroundConfig,
     backgroundColor,
@@ -42,32 +49,81 @@ export default function ExportStep() {
 
   useEffect(() => {
     if (assets) return;
-    console.log("[ExportStep] mounting; firing generateAssets");
-    const ac = new AbortController();
-    generateAssets(iconBase64, backgroundConfig, ac.signal)
-      .then((res) => {
-        if (ac.signal.aborted) return;
-        console.log("[ExportStep] assets generated; count=", res.assets.length);
+    let cancelled = false;
+
+    // Rehydrate from Storage if this chat already has persisted assets.
+    if (storedAssets && storedAssets.length > 0) {
+      console.log("[ExportStep] rehydrating", storedAssets.length, "assets from storage");
+      rehydrateStoredAssets(storedAssets)
+        .then((hydrated) => {
+          if (cancelled || hydrated.length === 0) return;
+          update({ assets: hydrated, error: null });
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          console.warn("[ExportStep] rehydrate failed:", err);
+          update({
+            error: err instanceof Error ? err.message : "Loading assets failed",
+          });
+          setStep("background");
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // First-time generation requires the source icon bytes.
+    if (!iconBase64) return;
+
+    console.log("[ExportStep] generating assets client-side");
+    (async () => {
+      try {
+        const generated = await generateAllAssets(iconBase64, backgroundConfig);
+        if (cancelled) return;
+        const bgColor = resolveBgColor(backgroundConfig);
+        const expo = buildExpoConfig(bgColor);
         update({
-          assets: res.assets,
-          expoConfig: res.expo_config,
-          backgroundColor: res.background_color,
+          assets: generated,
+          expoConfig: expo,
+          backgroundColor: bgColor,
           error: null,
         });
-      })
-      .catch((err) => {
-        if (err?.name === "AbortError" || ac.signal.aborted) return;
-        console.warn("[ExportStep] generateAssets failed:", err);
+        // Fire-and-forget persistence — UI is already usable.
+        persistAssets(generated, expo, bgColor)
+          .then((stored) => {
+            if (cancelled || stored.length === 0) return;
+            update({ storedAssets: stored, hasAssets: true });
+          })
+          .catch((e) => console.warn("[ExportStep] persist failed:", e));
+      } catch (err) {
+        if (cancelled) return;
+        console.warn("[ExportStep] generateAllAssets failed:", err);
         update({
           error: err instanceof Error ? err.message : "Asset generation failed",
         });
         setStep("background");
-      });
-    return () => ac.abort();
-  }, [assets, iconBase64, backgroundConfig, setStep, update]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    assets,
+    storedAssets,
+    iconBase64,
+    backgroundConfig,
+    setStep,
+    update,
+    persistAssets,
+    rehydrateStoredAssets,
+  ]);
 
   if (!assets) {
-    return <Spinner message="Generating all asset sizes..." />;
+    const loading = storedAssets && storedAssets.length > 0
+      ? "Loading saved assets..."
+      : "Generating all asset sizes...";
+    return <Spinner message={loading} />;
   }
 
   const grouped = PLATFORM_ORDER.map((platform) => ({

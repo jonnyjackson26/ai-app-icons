@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useWizard } from "@/components/WizardContext";
 import { createClient } from "@/lib/supabase/browser";
-import { CHAT_ICONS_BUCKET } from "@/lib/chatDb";
+import { CHAT_ICONS_BUCKET, type StoredAsset } from "@/lib/chatDb";
 import {
   appendMessageRow,
   bulkAppendMessageRows,
@@ -12,6 +12,7 @@ import {
 } from "@/lib/chatApi";
 import type { ChatMessage } from "@/lib/chatTypes";
 import { newId } from "@/lib/chatTypes";
+import type { AssetFile } from "@/lib/types";
 
 // Persistence layer for the chat. Wraps the raw WizardContext mutators with
 // fire-and-forget network + Storage writes so the UI stays snappy and the
@@ -78,6 +79,39 @@ type UserMessage = Extract<ChatMessage, { role: "user" }>;
 type AssistantIconMessage = Extract<ChatMessage, { role: "assistant"; kind: "icon" }>;
 type AssistantTextMessage = Extract<ChatMessage, { role: "assistant"; kind: "text" }>;
 
+// Upload a batch of generated assets to Storage in parallel. Returns the
+// StoredAsset[] (base64 stripped, path attached) ready to persist on the chat row.
+export async function uploadAssetsBatch(
+  userId: string,
+  chatId: string,
+  assets: AssetFile[],
+): Promise<StoredAsset[]> {
+  if (!isEnabled()) return [];
+  const results = await Promise.all(
+    assets.map(async (a) => {
+      const path = await uploadImage({
+        userId,
+        chatId,
+        messageId: a.name,
+        base64: a.image_base64,
+        kind: "asset",
+        name: a.name,
+      });
+      if (!path) return null;
+      return {
+        name: a.name,
+        width: a.width,
+        height: a.height,
+        has_background: a.has_background,
+        platform: a.platform,
+        variant: a.variant,
+        path,
+      } satisfies StoredAsset;
+    }),
+  );
+  return results.filter((r): r is StoredAsset => r !== null);
+}
+
 export interface UseChatPersistence {
   // Append a user message — persists text immediately, attachments upload in parallel.
   persistUserMessage: (msg: UserMessage) => Promise<void>;
@@ -93,6 +127,14 @@ export interface UseChatPersistence {
   patchCurrentChat: (body: Parameters<typeof patchChat>[1]) => Promise<void>;
   // Pull bytes for the current iconUrl into iconBase64 so edits can round-trip.
   hydrateIconBase64: () => Promise<void>;
+  // Upload client-generated assets to Storage + PATCH the chat row. No-op when anonymous.
+  persistAssets: (
+    assets: AssetFile[],
+    expoConfig: Record<string, unknown>,
+    backgroundColor: string,
+  ) => Promise<StoredAsset[]>;
+  // Turn StoredAsset[] (path only) from the DB back into AssetFile[] (base64) for ExportStep.
+  rehydrateStoredAssets: (stored: StoredAsset[]) => Promise<AssetFile[]>;
 }
 
 function deriveTitle(messages: ChatMessage[]): string {
@@ -302,6 +344,75 @@ export function useChatPersistence(): UseChatPersistence {
     [],
   );
 
+  const persistAssets = useCallback(
+    async (
+      assets: AssetFile[],
+      expoConfig: Record<string, unknown>,
+      backgroundColor: string,
+    ): Promise<StoredAsset[]> => {
+      if (!isEnabled()) return [];
+      const userId = await getCurrentUserId();
+      if (!userId) return [];
+      const chatId = chatIdRef.current;
+      if (!chatId) return [];
+      const stored = await uploadAssetsBatch(userId, chatId, assets);
+      if (stored.length === 0) return [];
+      try {
+        await patchChat(chatId, {
+          assets: stored,
+          expoConfig,
+          backgroundColor,
+        });
+      } catch (e) {
+        console.warn("[chatPersistence] patch assets failed:", e);
+      }
+      return stored;
+    },
+    [],
+  );
+
+  const rehydrateStoredAssets = useCallback(
+    async (stored: StoredAsset[]): Promise<AssetFile[]> => {
+      if (!isEnabled() || stored.length === 0) return [];
+      const supabase = createClient();
+      const paths = stored.map((s) => s.path);
+      const { data: signed, error } = await supabase.storage
+        .from(CHAT_ICONS_BUCKET)
+        .createSignedUrls(paths, 60 * 60);
+      if (error || !signed) {
+        console.warn("[chatPersistence] signed url batch failed:", error?.message);
+        return [];
+      }
+      const urlByPath = new Map<string, string>();
+      for (const s of signed) {
+        if (s.path && s.signedUrl) urlByPath.set(s.path, s.signedUrl);
+      }
+      const hydrated = await Promise.all(
+        stored.map(async (s): Promise<AssetFile | null> => {
+          const url = urlByPath.get(s.path);
+          if (!url) return null;
+          try {
+            const b64 = await urlToBase64(url);
+            return {
+              name: s.name,
+              width: s.width,
+              height: s.height,
+              has_background: s.has_background,
+              platform: s.platform,
+              variant: s.variant,
+              image_base64: b64,
+            };
+          } catch (e) {
+            console.warn("[chatPersistence] rehydrate asset failed:", s.path, e);
+            return null;
+          }
+        }),
+      );
+      return hydrated.filter((a): a is AssetFile => a !== null);
+    },
+    [],
+  );
+
   const hydrateIconBase64 = useCallback(async () => {
     if (data.iconBase64 || !data.iconUrl) return;
     try {
@@ -424,5 +535,7 @@ export function useChatPersistence(): UseChatPersistence {
     migrateAnonymousChat,
     patchCurrentChat,
     hydrateIconBase64,
+    persistAssets,
+    rehydrateStoredAssets,
   };
 }

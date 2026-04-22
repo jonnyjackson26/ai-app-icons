@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
+import Spinner from "@/components/ui/Spinner";
 import BackgroundPreview from "@/components/BackgroundPreview";
 import { PRESETS } from "@/lib/backgroundPresets";
 import { useWizard } from "@/components/WizardContext";
+import { useChats } from "@/components/ChatsContext";
 import { useChatPersistence } from "@/lib/chatPersistence";
 import type { BackgroundConfig } from "@/lib/types";
 
@@ -67,13 +69,17 @@ function seedFromConfig(cfg: BackgroundConfig): Seed {
 export default function BackgroundStep() {
   const { data, update, setStep } = useWizard();
   const { patchCurrentChat } = useChatPersistence();
-  const iconBase64 = data.iconBase64!;
+  const { upsertLocal } = useChats();
 
   const initial = seedFromConfig(data.backgroundConfig);
   const [bgType, setBgType] = useState<"solid" | "gradient">(initial.bgType);
   const [solidColor, setSolidColor] = useState(initial.solidColor);
   const [gradColors, setGradColors] = useState(initial.gradColors);
   const [direction, setDirection] = useState(initial.direction);
+  // Flipped to true on any explicit pick. Gates persistence so that merely
+  // landing on this step (with the default preset) doesn't count as
+  // "selected a background" for the farthest-step resume rule.
+  const touchedRef = useRef(false);
 
   const config: BackgroundConfig = useMemo(() => {
     if (bgType === "solid") return { type: "solid", color: solidColor };
@@ -82,13 +88,34 @@ export default function BackgroundStep() {
 
   useEffect(() => {
     update({ backgroundConfig: config });
-  }, [config, update]);
+    if (!touchedRef.current) return;
+    const chatId = data.chatId;
+    if (chatId) upsertLocal({ id: chatId, backgroundConfig: config });
+    patchCurrentChat({ backgroundConfig: config });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config]);
+
+  if (!data.iconBase64) {
+    return <Spinner message="Loading icon..." />;
+  }
+  const iconBase64 = data.iconBase64;
 
   const handleGenerate = () => {
     console.log("[BackgroundStep] Generate Assets → setStep(export)");
-    update({ backgroundConfig: config, assets: null });
+    // Clear previously-persisted assets too, so ExportStep regenerates instead
+    // of rehydrating stale assets that were generated with the old background.
+    update({
+      backgroundConfig: config,
+      assets: null,
+      storedAssets: null,
+      hasAssets: false,
+    });
     // Persist the chosen background so reopening this chat remembers it.
-    patchCurrentChat({ backgroundConfig: config });
+    // (Also covers the edge case where the user reaches this screen, never
+    // touches a control, and clicks Generate with the default preset.)
+    patchCurrentChat({ backgroundConfig: config, assets: null });
+    const chatId = data.chatId;
+    if (chatId) upsertLocal({ id: chatId, backgroundConfig: config });
     setStep("export");
   };
 
@@ -110,17 +137,20 @@ export default function BackgroundStep() {
     bgType === "solid" && activeQuickId === null;
 
   const pickQuickSolid = (color: string) => {
+    touchedRef.current = true;
     setBgType("solid");
     setSolidColor(color);
   };
 
   const pickPreset = (preset: (typeof PRESETS)[number]) => {
+    touchedRef.current = true;
     setBgType("gradient");
     setGradColors(preset.colors);
     setDirection(preset.direction);
   };
 
   const updateGradColor = (i: number, value: string) => {
+    touchedRef.current = true;
     setBgType("gradient");
     const updated = [...gradColors];
     updated[i] = value;
@@ -129,14 +159,22 @@ export default function BackgroundStep() {
 
   const removeGradColor = (i: number) => {
     if (gradColors.length <= 2) return;
+    touchedRef.current = true;
     setBgType("gradient");
     setGradColors(gradColors.filter((_, j) => j !== i));
   };
 
   const addGradColor = () => {
     if (gradColors.length >= 4) return;
+    touchedRef.current = true;
     setBgType("gradient");
     setGradColors([...gradColors, "#24243e"]);
+  };
+
+  const pickDirection = (value: string) => {
+    touchedRef.current = true;
+    setBgType("gradient");
+    setDirection(value);
   };
 
   return (
@@ -295,10 +333,7 @@ export default function BackgroundStep() {
           </label>
           <select
             value={direction}
-            onChange={(e) => {
-              setBgType("gradient");
-              setDirection(e.target.value);
-            }}
+            onChange={(e) => pickDirection(e.target.value)}
             className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-3 py-1.5 text-sm text-zinc-900 dark:text-zinc-100"
           >
             {DIRECTIONS.map((d) => (

@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from("chats")
     .select(
-      "id, title, last_message_at, current_icon_path, deleted_at"
+      "id, title, last_message_at, current_icon_path, background_config, deleted_at"
     )
     .is("deleted_at", null)
     .order("last_message_at", { ascending: false })
@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
     title: r.title,
     lastMessageAt: r.last_message_at,
     currentIconPath: r.current_icon_path,
+    backgroundConfig: r.background_config ?? null,
     thumbnailUrl: r.current_icon_path
       ? (signedByPath[r.current_icon_path] ?? null)
       : null,

@@ -37,7 +37,7 @@ export interface AssetFile {
   height: number;
   has_background: boolean;
   platform: "general" | "ios" | "android" | "web";
-  variant: "standard" | "dark" | "tinted" | "monochrome";
+  variant: "standard" | "dark" | "tinted" | "monochrome" | "background";
   image_base64: string;
 }
 

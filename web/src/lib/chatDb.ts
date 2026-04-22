@@ -24,6 +24,7 @@ export interface ChatSummary {
   title: string;
   lastMessageAt: string;
   currentIconPath: string | null;
+  backgroundConfig: BackgroundConfig | null;
   thumbnailUrl: string | null;
 }
 
