@@ -78,8 +78,10 @@ export default async function ChatPage({
   };
 
   // `key` ensures state resets when navigating between chats (/c/a → /c/b).
+  // `initialDto` seeds provider state synchronously so SSR + client agree
+  // on first paint (no hydration mismatch, no setState-during-render).
   return (
-    <WizardProvider key={chatId}>
+    <WizardProvider key={chatId} initialDto={dto}>
       <HydrationBoundary dto={dto}>
         <Suspense fallback={null}>
           <Wizard />

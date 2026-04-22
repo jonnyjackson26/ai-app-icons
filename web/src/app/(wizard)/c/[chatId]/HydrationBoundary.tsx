@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useWizard } from "@/components/WizardContext";
 import type { ChatDetailDto } from "@/lib/chatDb";
 
-// Client wrapper that seeds WizardContext from the server-fetched DTO before
-// any child effect runs, then asynchronously fetches the current icon as
-// base64 so the edit API (which takes raw bytes) can round-trip it.
+// WizardProvider seeds its own state from the DTO synchronously (via the
+// `initialDto` prop), so this component only handles the async side quest:
+// fetch the current icon as base64 so the edit API (which takes raw bytes)
+// can round-trip it.
 
 async function urlToBase64(url: string): Promise<string | null> {
   try {
@@ -34,15 +35,7 @@ export default function HydrationBoundary({
   dto: ChatDetailDto;
   children: React.ReactNode;
 }) {
-  const { hydrate, update, data } = useWizard();
-  const doneRef = useRef(false);
-
-  // Synchronous pre-render hydrate so ChatView's welcome-stream effect sees
-  // the populated messages list on its very first run.
-  if (!doneRef.current) {
-    doneRef.current = true;
-    hydrate(dto);
-  }
+  const { update, data } = useWizard();
 
   useEffect(() => {
     const url = dto.currentIconSignedUrl;

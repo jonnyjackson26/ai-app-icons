@@ -72,6 +72,18 @@ export default function ChatView() {
     null | { payload: RequestPayload; errorMessageId: string }
   >(null);
 
+  // Refs mirror the latest chatId/messages so the auth-listener effect below
+  // doesn't need them in its deps. Without this, every welcome-stream tick
+  // mutates data.messages → re-subscribes → INITIAL_SESSION fires again →
+  // migrateAnonymousChat runs N times → chat_messages_pkey collisions.
+  const chatIdRef = useRef<string | null>(data.chatId);
+  const messagesRef = useRef<ChatMessage[]>(data.messages);
+  const migrationStartedRef = useRef(false);
+  useEffect(() => {
+    chatIdRef.current = data.chatId;
+    messagesRef.current = data.messages;
+  }, [data.chatId, data.messages]);
+
   const cancelPromptStream = useCallback(() => {
     if (promptStreamTimerRef.current !== null) {
       window.clearInterval(promptStreamTimerRef.current);
@@ -89,6 +101,12 @@ export default function ChatView() {
   useEffect(() => {
     if (welcomeStartedRef.current) return;
     if (data.isHydrating) return;
+    // Any hydrated chat has chatId set; belt-and-braces against the race
+    // where HydrationBoundary's setState-during-render lands late.
+    if (data.chatId) {
+      welcomeStartedRef.current = true;
+      return;
+    }
     if (data.messages.length > 0) {
       welcomeStartedRef.current = true;
       return;
@@ -343,9 +361,22 @@ export default function ChatView() {
       if (replayed) return;
 
       // Migrate anonymous transcript first (before replay so the replayed
-      // assistant response lands inside the new persisted chat).
-      if (!data.chatId && data.messages.length > 0) {
-        await migrateAnonymousChat(data.messages);
+      // assistant response lands inside the new persisted chat). The welcome
+      // message is purely onboarding UI — filter it out so we don't persist
+      // partial mid-stream text, and guard with migrationStartedRef so two
+      // auth events can't race two createChat calls.
+      if (
+        !chatIdRef.current &&
+        messagesRef.current.length > 0 &&
+        !migrationStartedRef.current
+      ) {
+        const toMigrate = messagesRef.current.filter(
+          (m) => m.id !== welcomeIdRef.current,
+        );
+        if (toMigrate.length > 0) {
+          migrationStartedRef.current = true;
+          await migrateAnonymousChat(toMigrate);
+        }
       }
 
       // In-memory (OTP path): preferred because it carries the errorMessageId
@@ -412,8 +443,6 @@ export default function ChatView() {
     appendMessage,
     persistUserMessage,
     migrateAnonymousChat,
-    data.chatId,
-    data.messages,
   ]);
 
   const onSend = useCallback(async () => {

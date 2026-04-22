@@ -145,8 +145,19 @@ function dataFromDto(dto: ChatDetailDto, prev: WizardData): WizardData {
   };
 }
 
-export function WizardProvider({ children }: { children: React.ReactNode }) {
-  const [data, setData] = useState<WizardData>(initialData);
+export function WizardProvider({
+  children,
+  initialDto,
+}: {
+  children: React.ReactNode;
+  initialDto?: ChatDetailDto;
+}) {
+  // Seed from the DTO synchronously so SSR and client agree on first paint
+  // and child effects (e.g. ChatView's welcome stream) see populated
+  // messages on their very first run — no setState-during-render needed.
+  const [data, setData] = useState<WizardData>(() =>
+    initialDto ? dataFromDto(initialDto, initialData) : initialData,
+  );
 
   const update = useCallback((partial: Partial<WizardData>) => {
     setData((prev) => ({ ...prev, ...partial }));

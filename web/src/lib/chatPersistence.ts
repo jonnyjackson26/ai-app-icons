@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useWizard } from "@/components/WizardContext";
 import { createClient } from "@/lib/supabase/browser";
 import { CHAT_ICONS_BUCKET } from "@/lib/chatDb";
@@ -117,7 +116,6 @@ async function getCurrentUserId(): Promise<string | null> {
 
 export function useChatPersistence(): UseChatPersistence {
   const { data, setChatId, update, updateMessage } = useWizard();
-  const router = useRouter();
 
   const ensureChatId = useCallback(
     async (seedTitle?: string): Promise<string | null> => {
@@ -128,11 +126,15 @@ export function useChatPersistence(): UseChatPersistence {
       try {
         const chat = await createChat({ title: seedTitle, mode: data.mode });
         setChatId(chat.id);
-        // Update URL without a navigation (preserves CLI params etc.).
+        // Update URL in place. `router.replace` would trigger a Next.js
+        // server fetch of /c/[id], unmounting this provider and destroying
+        // the just-appended user message that hasn't been persisted yet
+        // — the new page would then server-render an empty chat.
+        // `history.replaceState` just updates the address bar.
         if (typeof window !== "undefined") {
           const url = new URL(window.location.href);
           url.pathname = `/c/${chat.id}`;
-          router.replace(url.pathname + url.search);
+          window.history.replaceState(null, "", url.pathname + url.search);
         }
         return chat.id;
       } catch (e) {
@@ -140,7 +142,7 @@ export function useChatPersistence(): UseChatPersistence {
         return null;
       }
     },
-    [data.chatId, data.mode, router, setChatId],
+    [data.chatId, data.mode, setChatId],
   );
 
   const persistUserMessage = useCallback(
@@ -366,11 +368,13 @@ export function useChatPersistence(): UseChatPersistence {
           update({ iconPath: latestIconPath });
         }
 
-        // Replace URL so reload goes to the persisted chat.
+        // Replace URL so reload goes to the persisted chat. In-place update
+        // (no router.replace) — a Next.js navigation would unmount this
+        // provider and discard the in-memory transcript we just migrated.
         if (typeof window !== "undefined") {
           const url = new URL(window.location.href);
           url.pathname = `/c/${chat.id}`;
-          router.replace(url.pathname + url.search);
+          window.history.replaceState(null, "", url.pathname + url.search);
         }
         return chat.id;
       } catch (e) {
@@ -378,7 +382,7 @@ export function useChatPersistence(): UseChatPersistence {
         return null;
       }
     },
-    [router, setChatId, update],
+    [setChatId, update],
   );
 
   return {
