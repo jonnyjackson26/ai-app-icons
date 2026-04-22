@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronsUpDown, CreditCard, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import { useModals } from "./ModalProvider";
+import { useWizard } from "./WizardContext";
 
 interface Profile {
   tier: string;
@@ -28,6 +30,8 @@ export default function UserBadge({ collapsed = false }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const { openAuth, openBilling } = useModals();
+  const { reset } = useWizard();
+  const router = useRouter();
 
   useEffect(() => {
     if (!authEnabled) {
@@ -92,9 +96,17 @@ export default function UserBadge({ collapsed = false }: Props) {
   }, [open]);
 
   async function signOut() {
+    setOpen(false);
     const supabase = createClient();
     await supabase.auth.signOut();
-    setOpen(false);
+    // Clear any in-memory wizard state and return to the home route so the
+    // user lands on a clean slate — leaving them on /c/[id] after sign-out
+    // would show a stale transcript and 401 on any refine attempt.
+    reset();
+    router.replace("/");
+    if (typeof window !== "undefined" && window.location.pathname !== "/") {
+      window.history.replaceState(null, "", "/");
+    }
   }
 
   if (!authEnabled) return null;

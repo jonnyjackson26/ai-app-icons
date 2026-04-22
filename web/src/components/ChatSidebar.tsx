@@ -76,9 +76,10 @@ export default function ChatSidebar() {
     setMobileOpen(false);
   }, [reset, router]);
 
-  // Hidden entirely for anonymous users. A future enhancement could show a
-  // sign-in CTA in the shell instead of null.
-  if (!signedIn) return null;
+  // Self-host mode has no persistence and no auth, so the sidebar is
+  // meaningless — hide it entirely.
+  const authEnabled = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!authEnabled) return null;
 
   const activeId = pathname.startsWith("/c/") ? pathname.slice(3) : null;
 
@@ -169,9 +170,19 @@ export default function ChatSidebar() {
                     aria-hidden="true"
                   />
                   <div className="text-xs text-zinc-500 dark:text-zinc-500">
-                    No chats yet.
-                    <br />
-                    Your conversations will appear here.
+                    {signedIn ? (
+                      <>
+                        No chats yet.
+                        <br />
+                        Your conversations will appear here.
+                      </>
+                    ) : (
+                      <>
+                        Sign in to save your chats
+                        <br />
+                        and access them across devices.
+                      </>
+                    )}
                   </div>
                 </div>
               )
