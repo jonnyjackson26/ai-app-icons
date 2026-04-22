@@ -8,14 +8,15 @@ export interface BackgroundPreset {
   direction: string;
 }
 
-// Mirrors web/src/lib/backgroundPresets.ts. Duplicated on purpose — five items.
+// Mirrors a small curated subset of web/src/lib/backgroundPresets.ts.
+// Kept Apple-style and intentionally short so the CLI prompt stays readable.
 export const PRESETS: BackgroundPreset[] = [
-  { id: "sunset", name: "Sunset", colors: ["#ff9966", "#ff5e62"], direction: "to-bottom-right" },
-  { id: "ocean", name: "Ocean", colors: ["#2193b0", "#6dd5ed"], direction: "to-bottom" },
-  { id: "midnight", name: "Midnight", colors: ["#0f0c29", "#302b63", "#24243e"], direction: "to-bottom-right" },
-  { id: "forest", name: "Forest", colors: ["#134e5e", "#71b280"], direction: "to-bottom" },
-  { id: "candy", name: "Candy", colors: ["#d53369", "#daae51"], direction: "to-bottom-right" },
-  { id: "aurora", name: "Aurora", colors: ["#1d976c", "#93f9b9"], direction: "to-bottom-right" },
+  { id: "cream",    name: "Cream",    colors: ["#ffffff", "#f3f0e7"], direction: "to-bottom-right" },
+  { id: "peach",    name: "Peach",    colors: ["#ffecd2", "#fcb69f"], direction: "to-bottom-right" },
+  { id: "sage",     name: "Sage",     colors: ["#e3ebe3", "#b5c9b5"], direction: "to-bottom-right" },
+  { id: "frost",    name: "Frost",    colors: ["#e3f2fd", "#bbdefb"], direction: "to-bottom-right" },
+  { id: "slate",    name: "Slate",    colors: ["#e2e8f0", "#cbd5e1"], direction: "to-bottom-right" },
+  { id: "aurora",   name: "Aurora",   colors: ["#1d976c", "#93f9b9"], direction: "to-bottom-right" },
 ];
 
 function onCancel(): never {
