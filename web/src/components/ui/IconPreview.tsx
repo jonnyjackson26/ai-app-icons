@@ -16,7 +16,7 @@ export default function IconPreview({ base64, url, size = "lg" }: IconPreviewPro
   const src = url ?? (base64 ? `data:image/png;base64,${base64}` : "");
   return (
     <div
-      className={`${sizeClasses[size]} rounded-2xl overflow-hidden shadow-lg mx-auto`}
+      className={`${sizeClasses[size]} rounded-2xl overflow-hidden shadow-lg`}
       style={{
         backgroundImage:
           "linear-gradient(45deg, #e5e7eb 25%, transparent 25%), " +

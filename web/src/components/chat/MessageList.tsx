@@ -31,34 +31,36 @@ export default function MessageList({ messages, loadingLabel }: MessageListProps
 
 function IconLoadingBubble({ label }: { label: string }) {
   return (
-    <div className="flex justify-start">
-      <div className="max-w-[85%] space-y-2">
-        <div className="rounded-2xl rounded-tl-sm bg-zinc-100 dark:bg-zinc-800 p-3">
-          <div
-            className="w-64 h-64 rounded-2xl overflow-hidden shadow-lg mx-auto relative bg-zinc-200 dark:bg-zinc-700"
-            role="status"
-            aria-label={label}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 dark:via-white/10 to-transparent -translate-x-full animate-[shimmer_1.6s_infinite]" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <svg
-                className="animate-spin text-zinc-400 dark:text-zinc-500"
-                width="36"
-                height="36"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="M21 12a9 9 0 11-6.219-8.56" />
-              </svg>
-            </div>
+    <div className="space-y-2">
+      <div className="flex justify-start">
+        <div
+          className="w-64 h-64 rounded-2xl overflow-hidden shadow-lg relative bg-zinc-200 dark:bg-zinc-700"
+          role="status"
+          aria-label={label}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 dark:via-white/10 to-transparent -translate-x-full animate-[shimmer_1.6s_infinite]" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <svg
+              className="animate-spin text-zinc-400 dark:text-zinc-500"
+              width="36"
+              height="36"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M21 12a9 9 0 11-6.219-8.56" />
+            </svg>
           </div>
         </div>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 px-1">{label}</p>
+      </div>
+      <div className="flex justify-start">
+        <div className="max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+          {label}
+        </div>
       </div>
     </div>
   );

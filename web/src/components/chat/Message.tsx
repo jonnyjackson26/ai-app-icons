@@ -54,21 +54,18 @@ export default function Message({ message }: { message: ChatMessage }) {
   }
 
   if (message.role === "assistant" && message.kind === "icon") {
-    if (!message.caption) {
-      return (
+    return (
+      <div className="space-y-2">
         <div className="flex justify-start">
           <IconPreview base64={message.iconBase64} url={message.iconUrl} size="md" />
         </div>
-      );
-    }
-    return (
-      <div className="flex justify-start">
-        <div className="max-w-[85%] space-y-2">
-          <IconPreview base64={message.iconBase64} url={message.iconUrl} size="md" />
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 px-1">
-            {message.caption}
-          </p>
-        </div>
+        {message.caption && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm whitespace-pre-wrap bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+              {message.caption}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
