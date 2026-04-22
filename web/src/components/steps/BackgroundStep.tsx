@@ -252,27 +252,22 @@ export default function BackgroundStep() {
         <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">
           Gradient
         </h3>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
           {PRESETS.map((p) => {
             const isActive = activePresetId === p.id;
             return (
               <button
                 key={p.id}
                 onClick={() => pickPreset(p)}
-                className={`rounded-xl overflow-hidden transition-all cursor-pointer ${
+                aria-label={p.name}
+                title={p.name}
+                className={`h-14 rounded-xl overflow-hidden transition-all cursor-pointer ${
                   isActive
                     ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-zinc-950"
                     : "ring-1 ring-zinc-200 dark:ring-zinc-700 hover:ring-zinc-300 dark:hover:ring-zinc-600"
                 }`}
-              >
-                <div
-                  className="h-16 w-full"
-                  style={{ background: presetGradientCss(p.colors, p.direction) }}
-                />
-                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 py-1.5 text-center bg-white dark:bg-zinc-900">
-                  {p.name}
-                </p>
-              </button>
+                style={{ background: presetGradientCss(p.colors, p.direction) }}
+              />
             );
           })}
         </div>
