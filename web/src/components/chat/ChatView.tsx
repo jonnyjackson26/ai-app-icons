@@ -60,6 +60,9 @@ export default function ChatView() {
   const [attachedName, setAttachedName] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [sendingOp, setSendingOp] = useState<"generate" | "refine" | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  // Counter handles nested dragenter/dragleave from child elements without flicker.
+  const dragDepthRef = useRef(0);
 
   const welcomeIdRef = useRef<string | null>(null);
   const welcomeStartedRef = useRef(false);
@@ -206,6 +209,47 @@ export default function ChatView() {
     setAttachedImage(base64);
     setAttachedName(name);
   }, []);
+
+  const handleDragEnter = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      if (sending) return;
+      if (!Array.from(e.dataTransfer.types).includes("Files")) return;
+      e.preventDefault();
+      dragDepthRef.current += 1;
+      setIsDragging(true);
+    },
+    [sending],
+  );
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      if (sending) return;
+      if (!Array.from(e.dataTransfer.types).includes("Files")) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    },
+    [sending],
+  );
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (!Array.from(e.dataTransfer.types).includes("Files")) return;
+    e.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      dragDepthRef.current = 0;
+      setIsDragging(false);
+      if (sending) return;
+      const file = e.dataTransfer.files?.[0];
+      if (!file || !file.type.startsWith("image/")) return;
+      readFile(file, (base64) => attachLocal(base64, file.name));
+    },
+    [sending, attachLocal],
+  );
 
   const clearAttachment = useCallback(() => {
     setAttachedImage(null);
@@ -531,8 +575,22 @@ export default function ChatView() {
         : null;
 
   return (
-    <div className="relative flex-1 min-h-0 w-full">
+    <div
+      className="relative flex-1 min-h-0 w-full"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <MessageList messages={data.messages} loadingLabel={loadingLabel} />
+
+      {isDragging && (
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-blue-500/10 backdrop-blur-sm">
+          <div className="rounded-2xl border-2 border-dashed border-blue-500 bg-white/90 dark:bg-zinc-900/90 px-6 py-4 text-sm font-medium text-blue-700 dark:text-blue-300 shadow-lg">
+            Drop image to attach
+          </div>
+        </div>
+      )}
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col">
         <div className="pointer-events-auto relative z-10">

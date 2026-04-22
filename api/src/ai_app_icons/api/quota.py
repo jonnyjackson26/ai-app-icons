@@ -12,6 +12,8 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, status
 
+from ai_app_icons.pricing import UsageBreakdown
+
 from .auth import User, get_current_user
 from .supabase_client import get_service_client
 
@@ -77,19 +79,33 @@ async def check_quota(user: User = Depends(get_current_user)) -> User:
     return user
 
 
-def record_usage(user: User, kind: str) -> None:
+def record_usage(
+    user: User, kind: str, usage: UsageBreakdown | None = None
+) -> None:
     """Record a successful OpenAI call. Swallows errors — metering must never
-    block the user's response."""
+    block the user's response.
+
+    When ``usage`` is provided, token counts and computed cost_usd are stored
+    alongside the event. Callers should pass the UsageBreakdown returned by
+    ``generate_icon`` / ``edit_icon``.
+    """
     if user.source == "self_host":
         return
     if kind not in ("generate", "edit"):
         return
     if not os.getenv("SUPABASE_URL"):
         return
+    row: dict[str, object] = {"user_id": user.id, "kind": kind}
+    if usage is not None:
+        row.update(
+            model=usage.model,
+            input_text_tokens=usage.input_text_tokens,
+            input_image_tokens=usage.input_image_tokens,
+            output_image_tokens=usage.output_image_tokens,
+            cost_usd=usage.cost_usd,
+        )
     try:
-        get_service_client().table("usage_events").insert(
-            {"user_id": user.id, "kind": kind}
-        ).execute()
+        get_service_client().table("usage_events").insert(row).execute()
     except Exception:
         logger.exception("Failed to record usage_event (user=%s kind=%s)", user.id, kind)
 

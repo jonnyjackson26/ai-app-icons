@@ -165,7 +165,7 @@ def export_flow(session: Session) -> None:
 def _generate(session: Session) -> bool:
     """Generate a brand-new icon from the description. Returns success."""
     try:
-        image = ui.run_with_spinner(
+        image, _usage = ui.run_with_spinner(
             "Generating your icon...",
             lambda: generate_icon(session.original_description, mode=session.mode),
         )
@@ -181,7 +181,7 @@ def _generate(session: Session) -> bool:
 def _refine(session: Session, instruction: str) -> None:
     """Edit the current icon based on the user's instruction."""
     try:
-        image, message = ui.run_with_spinner(
+        image, message, _usage = ui.run_with_spinner(
             "Editing your icon...",
             lambda: edit_icon(session.current_image, instruction),
         )

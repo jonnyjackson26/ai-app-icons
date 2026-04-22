@@ -12,6 +12,7 @@ from openai import OpenAI
 from PIL import Image
 
 from ai_app_icons.modes import get_mode
+from ai_app_icons.pricing import UsageBreakdown, extract_usage
 
 load_dotenv()
 
@@ -116,8 +117,11 @@ def generate_icon(
     size: str = "1024x1024",
     output_path: Path | None = None,
     mode: str | None = None,
-) -> Image.Image:
-    """Generate a new app icon from a text description. Returns PIL Image (RGBA).
+) -> tuple[Image.Image, UsageBreakdown]:
+    """Generate a new app icon from a text description.
+
+    Returns (image, usage) — the PIL Image (RGBA) and a normalized usage
+    breakdown (tokens + computed USD cost) for logging/metering.
 
     ``mode`` selects a visual style (see :mod:`ai_app_icons.modes`).
     """
@@ -133,12 +137,13 @@ def generate_icon(
     )
 
     image = _decode_image(result)
+    usage = extract_usage(result, fallback_model=model)
 
     if output_path:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         image.save(output_path, format="PNG")
 
-    return image
+    return image, usage
 
 
 def edit_icon(
@@ -147,11 +152,11 @@ def edit_icon(
     *,
     quality: str = "low",
     size: str = "1024x1024",
-) -> tuple[Image.Image, str]:
+) -> tuple[Image.Image, str, UsageBreakdown]:
     """Edit an existing icon based on a text instruction.
 
-    Returns (image, message) — the edited PIL Image (RGBA) and any text the
-    model included alongside the image.
+    Returns (image, message, usage) — the edited PIL Image (RGBA), any text the
+    model included alongside the image, and a normalized usage breakdown.
     """
     client = _get_client()
 
@@ -201,4 +206,6 @@ def edit_icon(
     if image is None:
         raise RuntimeError("The model did not generate an image. Try a different instruction.")
 
-    return image, "\n".join(text_parts)
+    usage = extract_usage(response, fallback_model="gpt-4o")
+
+    return image, "\n".join(text_parts), usage

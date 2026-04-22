@@ -1,3 +1,5 @@
+ 
+
 # Deployment
 
 Two separate deployments: the API on Fly.io, the web app on Vercel.
@@ -11,10 +13,10 @@ Two separate deployments: the API on Fly.io, the web app on Vercel.
    ```bash
    # macOS
    brew install flyctl
-
+   
    # Windows
    powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"
-
+   
    # Linux
    curl -L https://fly.io/install.sh | sh
    ```
@@ -81,6 +83,7 @@ To set it up, add a `FLY_API_TOKEN` secret to your GitHub repository:
    ```
 
 2. In your GitHub repo, go to **Settings → Secrets and variables → Actions → New repository secret**.
+
 3. Name: `FLY_API_TOKEN`, Value: the token from step 1.
 
 ### Verify
@@ -105,10 +108,11 @@ Your site will be live at `https://your-app.vercel.app`.
 
 1. Deploy the API (above)
 2. Add ChatGPT's domain to allowed origins:
+
    ```bash
    fly secrets set ALLOWED_ORIGINS=https://your-web-app.vercel.app,https://chat.openai.com
    ```
-3. In the [GPT builder](https://chat.openai.com/gpts/editor): Configure > Actions > Create new action > Import from URL > paste `https://ai-app-icons.fly.dev/openapi.json`
+3. In the [GPT builder](https://chat.openai.com/gpts/editor): Configure &gt; Actions &gt; Create new action &gt; Import from URL &gt; paste `https://ai-app-icons.fly.dev/openapi.json`
 
 ## Local development
 
@@ -125,3 +129,13 @@ npm install
 npm run dev
 # Runs at http://localhost:3000
 ```
+
+ 
+
+I track token usage and estimaed cost in supabase:\
+**Caveats worth knowing**
+
+- Cost on the edit path is approximate — the Responses API doesn't expose which underlying image model was invoked, so I charge gpt-image-1 rates when gpt-4o is the outer model. If OpenAI swaps the tool's image model under the hood, costs will drift.
+- OpenAI's usage shapes vary; `extract_usage` is defensive but can under-count if OpenAI changes field names. Check a few real events against your OpenAI dashboard after going live to confirm the numbers line up.
+
+**How to see costs**: `select * from usage_cost_30d where user_id = '...';` in Supabase SQL editor, or `select kind, model, cost_usd, created_at from usage_events where user_id='...' order by created_at desc limit 20;` for per-interaction detail.

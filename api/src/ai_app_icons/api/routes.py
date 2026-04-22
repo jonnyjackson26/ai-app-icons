@@ -87,7 +87,7 @@ async def generate(
     Returns a base64-encoded PNG with transparent background.
     """
     try:
-        image = await asyncio.to_thread(
+        image, usage = await asyncio.to_thread(
             generate_icon, req.description, size=req.size, mode=req.mode
         )
     except ValueError as e:
@@ -97,7 +97,7 @@ async def generate(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    record_usage(user, "generate")
+    record_usage(user, "generate", usage)
     return ImageResponse(image_base64=_image_to_base64(image))
 
 
@@ -116,7 +116,7 @@ async def edit(
         raise HTTPException(status_code=400, detail="Invalid base64 image data")
 
     try:
-        image, message = await asyncio.to_thread(
+        image, message, usage = await asyncio.to_thread(
             edit_icon, source, req.instruction, size=req.size
         )
     except APIError:
@@ -124,7 +124,7 @@ async def edit(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    record_usage(user, "edit")
+    record_usage(user, "edit", usage)
     return ImageResponse(
         image_base64=_image_to_base64(image),
         message=message,
