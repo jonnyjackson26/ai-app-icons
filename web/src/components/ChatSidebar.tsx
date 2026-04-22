@@ -64,17 +64,25 @@ export default function ChatSidebar() {
   const onNewChat = useCallback(() => {
     // Reset the shared provider first so the UI clears immediately.
     reset();
-    // Sync the URL. router.replace handles the real navigation case
-    // (user was on /c/xyz); the explicit history.replaceState below
-    // handles the "synthetic URL" case (ensureChatId used replaceState
-    // without telling Next.js, so router.replace('/') is a no-op but
-    // the URL bar still shows /c/xyz).
-    router.replace("/");
-    if (typeof window !== "undefined" && window.location.pathname !== "/") {
-      window.history.replaceState(null, "", "/");
+    // Two cases to handle:
+    //  1. Next.js route is "/" but the URL bar shows /c/xyz — the "synthetic
+    //     URL" trap where ensureChatId used replaceState without telling the
+    //     Next router. router.replace('/') is a no-op here, so we have to
+    //     correct the URL bar directly.
+    //  2. Next.js route is something real (/c/xyz, /terms, /privacy) —
+    //     we need an actual client-side navigation. A synchronous
+    //     replaceState after router.replace will race it and cause Next.js
+    //     to cancel the nav (the URL would "match" before the render
+    //     swaps), so don't touch history here.
+    if (pathname === "/") {
+      if (typeof window !== "undefined" && window.location.pathname !== "/") {
+        window.history.replaceState(null, "", "/");
+      }
+    } else {
+      router.replace("/");
     }
     setMobileOpen(false);
-  }, [reset, router]);
+  }, [reset, router, pathname]);
 
   // Self-host mode has no persistence and no auth, so the sidebar is
   // meaningless — hide it entirely.

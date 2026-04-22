@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import LegalPageShell from "@/components/LegalPageShell";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — AI App Icons",
@@ -10,7 +11,7 @@ const CONTACT_EMAIL = "me@jonny-jackson.com";
 
 export default function PrivacyPage() {
   return (
-    <>
+    <LegalPageShell>
       <h1>Privacy Policy</h1>
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
         Effective {EFFECTIVE_DATE}
@@ -169,6 +170,6 @@ export default function PrivacyPage() {
         Questions or requests regarding this Privacy Policy? Contact us at{" "}
         <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
       </p>
-    </>
+    </LegalPageShell>
   );
 }

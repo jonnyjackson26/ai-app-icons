@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronsUpDown, CreditCard, FileText, LogOut, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import { useModals } from "./ModalProvider";
@@ -32,6 +32,7 @@ export default function UserBadge({ collapsed = false }: Props) {
   const { openAuth, openBilling } = useModals();
   const { reset } = useWizard();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!authEnabled) {
@@ -103,9 +104,15 @@ export default function UserBadge({ collapsed = false }: Props) {
     // user lands on a clean slate — leaving them on /c/[id] after sign-out
     // would show a stale transcript and 401 on any refine attempt.
     reset();
-    router.replace("/");
-    if (typeof window !== "undefined" && window.location.pathname !== "/") {
-      window.history.replaceState(null, "", "/");
+    // See ChatSidebar onNewChat for the two-case explanation. Using
+    // router.replace AND a synchronous replaceState races Next.js into
+    // cancelling the navigation on real routes like /terms.
+    if (pathname === "/") {
+      if (typeof window !== "undefined" && window.location.pathname !== "/") {
+        window.history.replaceState(null, "", "/");
+      }
+    } else {
+      router.replace("/");
     }
   }
 
