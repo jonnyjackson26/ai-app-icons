@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import ContentPageShell from "@/components/ContentPageShell";
 
 export const metadata: Metadata = {
@@ -12,6 +13,7 @@ const GITHUB_REPO = "https://github.com/jonnyjackson26/ai-app-icons";
 interface App {
   name: string;
   description: string;
+  image?: string;
   appStoreUrl?: string;
   playStoreUrl?: string;
 }
@@ -21,26 +23,33 @@ const APPS: App[] = [
     name: "Playboard",
     description:
       "Cross-platform app to track statistics for any basketball game — from pickup to pro league.",
+    playStoreUrl: "https://play.google.com/store/apps/details?id=com.jrsjackson26.playboard",
+    appStoreUrl: "",
   },
   {
-    name: "Contacts in Common",
+    name: "Contacts In Common",
     description:
       "A privacy-first React Native app that uses anonymous sign-ins and QR codes to find shared contacts within a group, then deletes the data.",
+    image: "/hall-of-fame/contacts-in-common.png",
     appStoreUrl:
-      "https://apps.apple.com/us/app/contacts-in-common/id6739991235",
+      "https://apps.apple.com/us/app/contacts-in-common/id6752362037",
   },
   {
     name: "The Unit Circle",
     description:
       "Interactive trigonometry tool. Touch the unit circle to see angles in degrees and radians alongside sine, cosine, and tangent values.",
+    image: "/hall-of-fame/unit-circle.png",
     appStoreUrl:
       "https://apps.apple.com/us/app/the-unit-circle-app/id6752369385",
+    playStoreUrl: "https://play.google.com/store/apps/details?id=com.jrsjackson26.unitcircle",
   },
   {
     name: "Temple Tracker",
     description:
       "Tracks temple attendance and generates personal statistics for members of The Church of Jesus Christ of Latter-Day Saints.",
+    image: "/hall-of-fame/temple-tracker.png",
     appStoreUrl: "https://apps.apple.com/us/app/temple-tracker/id6746468200",
+    playStoreUrl: "https://play.google.com/store/apps/details?id=com.jonnyjackson.templetracker",
   },
 ];
 
@@ -58,43 +67,58 @@ export default function HallOfFamePage() {
         {APPS.map((app) => (
           <div
             key={app.name}
-            className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 p-5"
+            className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 p-5 flex gap-4"
           >
-            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-              {app.name}
-            </h3>
-            <p className="mt-1.5 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
-              {app.description}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-3 text-xs">
-              {app.appStoreUrl ? (
-                <a
-                  href={app.appStoreUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:text-blue-700 dark:hover:text-blue-300"
-                >
-                  App Store →
-                </a>
+            <div className="shrink-0">
+              {app.image ? (
+                <Image
+                  src={app.image}
+                  alt={`${app.name} app icon`}
+                  width={64}
+                  height={64}
+                  className="rounded-[14px] border border-zinc-200 dark:border-zinc-800"
+                />
               ) : (
-                <span className="text-zinc-400 dark:text-zinc-500">
-                  App Store (coming soon)
-                </span>
+                <div className="h-16 w-16 rounded-[14px] border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/50" />
               )}
-              {app.playStoreUrl ? (
-                <a
-                  href={app.playStoreUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:text-blue-700 dark:hover:text-blue-300"
-                >
-                  Google Play →
-                </a>
-              ) : (
-                <span className="text-zinc-400 dark:text-zinc-500">
-                  Google Play (coming soon)
-                </span>
-              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                {app.name}
+              </h3>
+              <p className="mt-1.5 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+                {app.description}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3 text-xs">
+                {app.appStoreUrl ? (
+                  <a
+                    href={app.appStoreUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:text-blue-700 dark:hover:text-blue-300"
+                  >
+                    App Store →
+                  </a>
+                ) : (
+                  <span className="text-zinc-400 dark:text-zinc-500">
+                    App Store (coming soon)
+                  </span>
+                )}
+                {app.playStoreUrl ? (
+                  <a
+                    href={app.playStoreUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:text-blue-700 dark:hover:text-blue-300"
+                  >
+                    Google Play →
+                  </a>
+                ) : (
+                  <span className="text-zinc-400 dark:text-zinc-500">
+                    Google Play (coming soon)
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -106,8 +130,9 @@ export default function HallOfFamePage() {
         <a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer">
           GitHub repo
         </a>{" "}
-        adding your app&rsquo;s name, a one-sentence description, and links
-        to its Apple App Store and/or Google Play Store pages. Open{" "}
+        adding your app&rsquo;s name, a one-sentence description, your icon
+        (drop a 512×512 PNG into <code>web/public/hall-of-fame/</code>), and
+        links to its Apple App Store and/or Google Play Store pages. Open{" "}
         <code>web/src/app/(wizard)/hall-of-fame/page.tsx</code> and add a new
         entry to the <code>APPS</code> array.
       </p>
