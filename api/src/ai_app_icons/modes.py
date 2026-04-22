@@ -42,10 +42,10 @@ MODES: dict[str, Mode] = {
         name="iOS Liquid Glass",
         description="Glossy translucent material with soft refraction.",
         style_block=(
-            "- The SUBJECT is sculpted from liquid glass: glossy, translucent material with soft refraction, gentle caustics, and crisp specular highlights along its edges.\n"
-            "- Subtle gradients across the glass surface are expected; a faint contact shadow directly under the floating glass object is fine.\n"
-            "- Cool muted palette with silver / blue accents inside the glass.\n"
-            "- The glass IS the subject, not a frame around it. Do NOT draw a frosted rounded-square tile with a symbol inside — the symbol itself is the glass object, floating on transparent pixels."
+            "- The SUBJECT is sculpted from Apple's Liquid Glass (iOS 26 / macOS Tahoe design language): a translucent, refractive material that behaves like a polished piece of optical glass. The symbol itself IS the glass object — not a flat symbol printed on a glass tile.\n"
+            "- The body is glossy and softly luminous: gentle internal gradients, faint caustics, and subtle refraction suggest light passing through and bending inside the volume. Colors inside the glass glow rather than appear flat or neon. Prefer cool, muted palettes — silvery whites, pale blues, soft tints — and let translucency and gradient carry the color, not heavy saturation.\n"
+            "- Crisp specular highlights trace the upper edges and curved surfaces as thin, bright ribbons of light from a single overhead source. Edges lens the light the way the rim of real glass does. Keep highlights clean and the silhouette bold so the shape stays legible at small sizes.\n"
+            "- No frame and no environment around the subject. Do NOT render a frosted rounded-square tile, squircle, panel, studio backdrop, or wallpaper behind the glass object, and do NOT bake in heavy drop shadows, chunky bevels, or thick outlines (the system adds its own lighting at render time). A very subtle contact shadow directly beneath the floating object is fine; every other pixel is transparent."
         ),
     ),
     "single-color": Mode(

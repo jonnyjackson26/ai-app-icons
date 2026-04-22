@@ -9,8 +9,10 @@ import { useWizard } from "@/components/WizardContext";
 import { useChatPersistence } from "@/lib/chatPersistence";
 import {
   buildExpoConfig,
+  detectSingleColor,
   generateAllAssets,
   resolveBgColor,
+  type IosSingleColorStyle,
 } from "@/lib/assetGeneration";
 import { createClient } from "@/lib/supabase/browser";
 import { CHAT_ICONS_BUCKET } from "@/lib/chatDb";
@@ -44,12 +46,15 @@ export default function ExportStep() {
     expoConfig,
     backgroundConfig,
     backgroundColor,
+    iosSingleColorStyle,
     cliCallback,
     cliToken,
     cliProjectName,
   } = data;
 
   const [configCopied, setConfigCopied] = useState(false);
+  const [isSingleColorLogo, setIsSingleColorLogo] = useState<boolean | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
   const [cliSendState, setCliSendState] = useState<
     "idle" | "sending" | "sent" | "error"
   >("idle");
@@ -90,7 +95,11 @@ export default function ExportStep() {
     console.log("[ExportStep] generating assets client-side");
     (async () => {
       try {
-        const generated = await generateAllAssets(iconBase64, backgroundConfig);
+        const generated = await generateAllAssets(
+          iconBase64,
+          backgroundConfig,
+          iosSingleColorStyle,
+        );
         if (cancelled) return;
         const bgColor = resolveBgColor(backgroundConfig);
         const expo = buildExpoConfig(bgColor);
@@ -125,11 +134,64 @@ export default function ExportStep() {
     storedAssets,
     iconBase64,
     backgroundConfig,
+    iosSingleColorStyle,
     setStep,
     update,
     persistAssets,
     rehydrateStoredAssets,
   ]);
+
+  // Detect whether the source logo uses a single hue so we know whether to
+  // offer the iOS dark/tinted style toggle. Skipped when we only have
+  // iconUrl (rehydrated chats) — the toggle is first-session only.
+  useEffect(() => {
+    if (!iconBase64) {
+      setIsSingleColorLogo(null);
+      return;
+    }
+    let cancelled = false;
+    detectSingleColor(iconBase64)
+      .then((result) => {
+        if (!cancelled) setIsSingleColorLogo(result);
+      })
+      .catch((err) => {
+        console.warn("[ExportStep] single-color detection failed:", err);
+        if (!cancelled) setIsSingleColorLogo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [iconBase64]);
+
+  const handleStyleChange = async (style: IosSingleColorStyle) => {
+    if (style === iosSingleColorStyle || !iconBase64) return;
+    update({ iosSingleColorStyle: style });
+    setRegenerating(true);
+    try {
+      const generated = await generateAllAssets(
+        iconBase64,
+        backgroundConfig,
+        style,
+      );
+      const bgColor = resolveBgColor(backgroundConfig);
+      const expo = buildExpoConfig(bgColor);
+      update({
+        assets: generated,
+        expoConfig: expo,
+        backgroundColor: bgColor,
+        error: null,
+      });
+      persistAssets(generated, expo, bgColor)
+        .then((stored) => {
+          if (stored.length > 0) update({ storedAssets: stored, hasAssets: true });
+        })
+        .catch((e) => console.warn("[ExportStep] persist after style change failed:", e));
+    } catch (err) {
+      console.warn("[ExportStep] regenerate failed:", err);
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   if (!assets) {
     const loading = storedAssets && storedAssets.length > 0
@@ -358,6 +420,37 @@ export default function ExportStep() {
           <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             {group.label}
           </h3>
+          {group.platform === "ios" && isSingleColorLogo && iconBase64 && (
+            <div className="flex flex-wrap items-center gap-3 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2">
+              <span className="text-xs text-zinc-600 dark:text-zinc-300">
+                Dark &amp; tinted style:
+              </span>
+              <div className="inline-flex rounded-md border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+                {(["masked", "solid"] as const).map((style) => {
+                  const active = iosSingleColorStyle === style;
+                  const label = style === "masked" ? "Show background" : "Solid on dark";
+                  return (
+                    <button
+                      key={style}
+                      type="button"
+                      onClick={() => handleStyleChange(style)}
+                      disabled={regenerating}
+                      className={`text-xs px-3 py-1 cursor-pointer disabled:cursor-wait transition-colors ${
+                        active
+                          ? "bg-blue-600 text-white"
+                          : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {regenerating && (
+                <span className="text-xs text-zinc-400">Regenerating…</span>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {group.items.map((asset) => (
               <div

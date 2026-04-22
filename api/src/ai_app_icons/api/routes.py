@@ -151,7 +151,11 @@ async def assets(
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
             _written, bg_color = await asyncio.to_thread(
-                generate_all_assets, source, bg_config, Path(tmpdir)
+                generate_all_assets,
+                source,
+                bg_config,
+                Path(tmpdir),
+                req.ios_single_color_style,
             )
         except APIError:
             raise

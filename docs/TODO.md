@@ -13,3 +13,7 @@ make the usage not be down in the profile chip in the header, but rather as a ba
  
 
 option to use emojis/icons
+
+ 
+
+stream image and text data

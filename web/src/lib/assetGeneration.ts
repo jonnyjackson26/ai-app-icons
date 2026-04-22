@@ -160,10 +160,10 @@ function makeMonochrome(
   return canvas;
 }
 
-// Mirror of _is_single_color in api/src/ai_app_icons/assets.py: samples
+// Mirror of is_single_color in api/src/ai_app_icons/assets.py: samples
 // opaque pixels, ignores low-saturation ones, and returns true only if
 // the saturated hues all fit within a 40° arc on the color wheel.
-function isSingleColor(
+export function isSingleColor(
   img: HTMLImageElement,
   crop: CropBox,
   hueArcDeg = 40,
@@ -238,14 +238,14 @@ function makeIosDark(
   img: HTMLImageElement,
   crop: CropBox,
   iconFraction: number,
-  singleColor: boolean,
+  useBackground: boolean,
 ): HTMLCanvasElement {
   const canvas = makeCanvas(w, h);
   const ctx = ctxOf(canvas);
   ctx.fillStyle = IOS_DARK_BG;
   ctx.fillRect(0, 0, w, h);
 
-  if (!singleColor) {
+  if (!useBackground) {
     const p = computeIconPlacement(crop, w, h, iconFraction);
     ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, p.dx, p.dy, p.dw, p.dh);
     return canvas;
@@ -271,14 +271,14 @@ function makeIosTinted(
   img: HTMLImageElement,
   crop: CropBox,
   iconFraction: number,
-  singleColor: boolean,
+  useBackground: boolean,
 ): HTMLCanvasElement {
   const canvas = makeCanvas(w, h);
   const ctx = ctxOf(canvas);
   ctx.fillStyle = IOS_DARK_BG;
   ctx.fillRect(0, 0, w, h);
 
-  if (!singleColor) {
+  if (!useBackground) {
     const p = computeIconPlacement(crop, w, h, iconFraction);
     const gray = grayscaleLogoCanvas(img, crop, p.dw, p.dh);
     ctx.drawImage(gray, p.dx, p.dy);
@@ -309,13 +309,24 @@ async function nextFrame(): Promise<void> {
   });
 }
 
+export type IosSingleColorStyle = "masked" | "solid";
+
+export async function detectSingleColor(iconBase64: string): Promise<boolean> {
+  const img = await loadImage(iconBase64);
+  return isSingleColor(img, tightCrop(img));
+}
+
 export async function generateAllAssets(
   iconBase64: string,
   bgConfig: BackgroundConfig,
+  iosSingleColorStyle: IosSingleColorStyle = "masked",
 ): Promise<AssetFile[]> {
   const img = await loadImage(iconBase64);
   const crop = tightCrop(img);
-  const singleColor = isSingleColor(img, crop);
+  // useBackground: show the brand gradient through the silhouette. Only true
+  // for single-color logos whose owner hasn't opted into the 'solid' style.
+  const useBackground =
+    isSingleColor(img, crop) && iosSingleColorStyle === "masked";
 
   const out: AssetFile[] = [];
   for (const spec of ASSET_SPECS) {
@@ -323,9 +334,9 @@ export async function generateAllAssets(
     let canvas: HTMLCanvasElement;
 
     if (spec.variant === "dark") {
-      canvas = makeIosDark(w, h, bgConfig, img, crop, spec.iconFraction, singleColor);
+      canvas = makeIosDark(w, h, bgConfig, img, crop, spec.iconFraction, useBackground);
     } else if (spec.variant === "tinted") {
-      canvas = makeIosTinted(w, h, bgConfig, img, crop, spec.iconFraction, singleColor);
+      canvas = makeIosTinted(w, h, bgConfig, img, crop, spec.iconFraction, useBackground);
     } else if (spec.variant === "background") {
       canvas = makeBackgroundOnly(w, h, bgConfig);
     } else if (spec.variant === "monochrome") {

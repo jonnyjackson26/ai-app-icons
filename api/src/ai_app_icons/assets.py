@@ -118,7 +118,7 @@ def _resolve_bg_color(bg_config: dict) -> str:
     return "#ffffff"
 
 
-def _is_single_color(
+def is_single_color(
     image: Image.Image,
     hue_arc_deg: float = 40.0,
     sat_min: float = 0.2,
@@ -165,19 +165,21 @@ def _make_ios_dark(
     bg_config: dict,
     source: Image.Image,
     icon_fraction: float,
-    single_color: bool,
+    use_background: bool,
 ) -> Image.Image:
     """Create iOS dark variant.
 
-    For single-color logos: dark bg with user's background visible through
-    the logo shape (the silhouette gets painted with the brand gradient).
-    For multi-color logos: the logo is placed as-is on the dark bg so its
-    colors are preserved.
+    When *use_background* is True: dark bg with the user's background
+    visible through the logo shape (silhouette painted with the brand
+    gradient — the classic single-color-logo treatment).
+    When False: the logo is placed as-is on the dark bg so its colors
+    are preserved — the default for multi-color logos and the opt-in
+    mode for single-color logos that want their brand color on dark.
     """
     dark_r, dark_g, dark_b = parse_hex(IOS_DARK_BG)
     dark_canvas = Image.new("RGBA", size, (dark_r, dark_g, dark_b, 255))
 
-    if not single_color:
+    if not use_background:
         return _place_icon_centered(dark_canvas, source, icon_fraction)
 
     user_bg = create_background(size, bg_config)
@@ -196,20 +198,21 @@ def _make_ios_tinted(
     bg_config: dict,
     source: Image.Image,
     icon_fraction: float,
-    single_color: bool,
+    use_background: bool,
 ) -> Image.Image:
     """Create iOS tinted variant.
 
-    For single-color logos: the user's background is desaturated and
-    masked through the logo shape, giving a monochrome gradient tint.
-    For multi-color logos: the logo itself is reduced to grayscale shades
-    and placed on the dark bg. iOS applies the user's chosen tint color
-    over the luminance of this asset at runtime.
+    When *use_background* is True: the user's background is desaturated
+    and masked through the logo shape (gives a monochrome gradient tint
+    — the classic single-color-logo treatment).
+    When False: the logo itself is reduced to grayscale shades and
+    placed on the dark bg. iOS applies the user's chosen tint color over
+    the luminance of this asset at runtime.
     """
     dark_r, dark_g, dark_b = parse_hex(IOS_DARK_BG)
     dark_canvas = Image.new("RGBA", size, (dark_r, dark_g, dark_b, 255))
 
-    if not single_color:
+    if not use_background:
         gray_source = _to_grayscale_rgba(source)
         return _place_icon_centered(dark_canvas, gray_source, icon_fraction)
 
@@ -241,8 +244,17 @@ def generate_all_assets(
     source: Image.Image,
     bg_config: dict,
     output_dir: Path,
+    ios_single_color_style: str = "masked",
 ) -> tuple[list[Path], str]:
     """Generate all asset sizes from an in-memory source image.
+
+    *ios_single_color_style* only kicks in when the logo is detected as
+    single-color; it controls the iOS dark/tinted variants:
+      - ``"masked"`` (default): the brand gradient shows through the
+        logo silhouette — the classic look.
+      - ``"solid"``: the logo is placed directly on the iOS dark canvas
+        (for tinted, it becomes grayscale). Same treatment as multi-
+        color logos, for users who prefer that look.
 
     Returns (list of written file paths, resolved background color hex).
     """
@@ -250,16 +262,17 @@ def generate_all_assets(
     written: list[Path] = []
 
     bg_color = _resolve_bg_color(bg_config)
-    single_color = _is_single_color(source)
+    single_color = is_single_color(source)
+    use_background = single_color and ios_single_color_style == "masked"
 
     for asset in ASSETS:
         size = asset["size"]
         variant = asset["variant"]
 
         if variant == "dark":
-            canvas = _make_ios_dark(size, bg_config, source, asset["icon_fraction"], single_color)
+            canvas = _make_ios_dark(size, bg_config, source, asset["icon_fraction"], use_background)
         elif variant == "tinted":
-            canvas = _make_ios_tinted(size, bg_config, source, asset["icon_fraction"], single_color)
+            canvas = _make_ios_tinted(size, bg_config, source, asset["icon_fraction"], use_background)
         elif variant == "background":
             canvas = create_background(size, bg_config)
         elif variant == "monochrome":

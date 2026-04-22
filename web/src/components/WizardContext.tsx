@@ -6,6 +6,7 @@ import { DEFAULT_MODE_ID } from "@/lib/generationModes";
 import type { ChatMessage } from "@/lib/chatTypes";
 import type { ChatDetailDto, ChatRow, StoredAsset } from "@/lib/chatDb";
 import type { AssetFile, BackgroundConfig } from "@/lib/types";
+import type { IosSingleColorStyle } from "@/lib/assetGeneration";
 
 export const STEPS = ["chat", "background", "export"] as const;
 export type Step = (typeof STEPS)[number];
@@ -20,6 +21,11 @@ export interface WizardData {
   iconPath: string | null;
   editMessage: string;
   backgroundConfig: BackgroundConfig;
+  // When the logo is detected as single-color, this controls how the iOS
+  // dark/tinted variants look: 'masked' shows the brand gradient through
+  // the silhouette (default), 'solid' places the logo on the iOS dark
+  // canvas directly. Ignored for multi-color logos.
+  iosSingleColorStyle: IosSingleColorStyle;
   assets: AssetFile[] | null;
   // Hydrated metadata-only asset list from chats.assets. Used by ExportStep to
   // decide whether to re-generate or rehydrate from Storage, and by
@@ -53,6 +59,7 @@ const initialData: WizardData = {
     colors: PRESETS[0].colors,
     direction: PRESETS[0].direction,
   },
+  iosSingleColorStyle: "masked",
   assets: null,
   storedAssets: null,
   hasAssets: false,
