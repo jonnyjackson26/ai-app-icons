@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, ChevronsUpDown, CreditCard, FileText, LogOut, Shield } from "lucide-react";
+import { BookOpen, ChevronsUpDown, Code, CreditCard, FileText, LogOut, Server, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import { useModals } from "./ModalProvider";
 import { useWizard } from "./WizardContext";
@@ -169,6 +169,17 @@ export default function UserBadge({ collapsed = false }: Props) {
               type="button"
               onClick={() => {
                 setOpen(false);
+                router.push("/api-docs");
+              }}
+              className="flex w-full items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+            >
+              <Code className="h-4 w-4" aria-hidden="true" />
+              API
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
                 router.push("/terms");
               }}
               className="flex w-full items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
@@ -187,6 +198,15 @@ export default function UserBadge({ collapsed = false }: Props) {
               <Shield className="h-4 w-4" aria-hidden="true" />
               Privacy Policy
             </button>
+            <a
+              href="https://github.com/jonnyjackson26/ai-app-icons/blob/dev/docs/self-hosting.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+            >
+              <Server className="h-4 w-4" aria-hidden="true" />
+              Self host
+            </a>
           </div>
         )}
       </div>
@@ -270,6 +290,17 @@ export default function UserBadge({ collapsed = false }: Props) {
             type="button"
             onClick={() => {
               setOpen(false);
+              router.push("/api-docs");
+            }}
+            className="flex w-full items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+          >
+            <Code className="h-4 w-4" aria-hidden="true" />
+            API
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
               router.push("/terms");
             }}
             className="flex w-full items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
@@ -288,6 +319,15 @@ export default function UserBadge({ collapsed = false }: Props) {
             <Shield className="h-4 w-4" aria-hidden="true" />
             Privacy Policy
           </button>
+          <a
+            href="https://github.com/jonnyjackson26/ai-app-icons/blob/dev/docs/self-hosting.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+          >
+            <Server className="h-4 w-4" aria-hidden="true" />
+            Self host
+          </a>
           <button
             type="button"
             onClick={() => {

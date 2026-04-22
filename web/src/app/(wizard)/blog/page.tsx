@@ -46,6 +46,13 @@ const POSTS: Post[] = [
     tag: "Guide",
   },
   {
+    href: "/api-docs",
+    title: "API Docs",
+    summary:
+      "REST endpoints for generating, editing, and exporting app icons — auth, request shapes, and how to self-host without quota.",
+    tag: "Guide",
+  },
+  {
     href: "/hall-of-fame",
     title: "Hall of Fame",
     summary:
