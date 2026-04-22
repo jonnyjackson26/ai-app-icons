@@ -18,6 +18,7 @@ import {
 import { newId, type ChatMessage } from "@/lib/chatTypes";
 import { useStreamText } from "@/lib/useStreamText";
 import { createClient } from "@/lib/supabase/browser";
+import { CHAT_ICONS_BUCKET } from "@/lib/chatDb";
 
 const WELCOME =
   "Welcome to ai-app-icons!\n" +
@@ -51,6 +52,7 @@ export default function ChatView() {
     persistUserMessage,
     persistAssistantIcon,
     persistAssistantText,
+    ensureChatId,
     migrateAnonymousChat,
     hydrateIconBase64,
   } = useChatPersistence();
@@ -211,6 +213,19 @@ export default function ChatView() {
     readFile(file, (base64) => {
       update({ iconBase64: base64, iconUrl: null, iconPath: null, editMessage: "", error: null });
       setStep("background");
+      // Push the sidebar row immediately (after a single createChat roundtrip)
+      // with a data-URL thumbnail — don't make the user wait for the full
+      // upload + patch chain that appendAndPersistAssistantIcon runs.
+      ensureChatId("Uploaded logo").then((chatId) => {
+        if (!chatId) return;
+        upsertLocal({
+          id: chatId,
+          title: "Uploaded logo",
+          thumbnailUrl: `data:image/png;base64,${base64}`,
+          lastMessageAt: new Date().toISOString(),
+        });
+      });
+      appendAndPersistAssistantIcon(base64);
     });
   };
 
@@ -277,19 +292,27 @@ export default function ChatView() {
       appendMessage(iconMsg);
       // Fire-and-forget persistence — the UI already has the icon on screen,
       // Storage upload + DB insert happens in the background.
-      persistAssistantIcon(iconMsg, iconBase64).then(() => {
+      persistAssistantIcon(iconMsg, iconBase64).then(async (imagePath) => {
         // Read the freshest chatId via ref — the closure could have been
         // captured before the lazy chat creation landed in context state.
         const chatId = chatIdRef.current;
-        if (chatId) {
-          upsertLocal({
-            id: chatId,
-            currentIconPath: null,
-            lastMessageAt: new Date().toISOString(),
-          });
-          // Refresh the sidebar so the new thumbnail shows up.
-          refreshChats();
+        if (!chatId) return;
+        // Sign the uploaded icon so the sidebar thumbnail uses a stable path
+        // (vs. the data URL pushed by callers that upsert before upload).
+        let thumbnailUrl: string | null = null;
+        if (imagePath) {
+          const { data: signed } = await createClient()
+            .storage.from(CHAT_ICONS_BUCKET)
+            .createSignedUrl(imagePath, 60 * 60);
+          thumbnailUrl = signed?.signedUrl ?? null;
         }
+        upsertLocal({
+          id: chatId,
+          currentIconPath: imagePath ?? null,
+          thumbnailUrl,
+          lastMessageAt: new Date().toISOString(),
+        });
+        refreshChats();
       });
     },
     [appendMessage, persistAssistantIcon, upsertLocal, refreshChats],

@@ -50,6 +50,7 @@ export default function ExportStep() {
     cliCallback,
     cliToken,
     cliProjectName,
+    chatId,
   } = data;
 
   const [configCopied, setConfigCopied] = useState(false);
@@ -63,6 +64,9 @@ export default function ExportStep() {
     "idle" | "building" | "copied" | "error"
   >("idle");
   const [aiPromptError, setAiPromptError] = useState<string | null>(null);
+  const [ratingHover, setRatingHover] = useState(0);
+  const [ratingSubmitted, setRatingSubmitted] = useState<number | null>(null);
+  const [ratingError, setRatingError] = useState<string | null>(null);
 
   useEffect(() => {
     if (assets) return;
@@ -325,6 +329,26 @@ export default function ExportStep() {
     }
   };
 
+  const handleSubmitRating = async (stars: number) => {
+    if (ratingSubmitted) return;
+    setRatingError(null);
+    setRatingSubmitted(stars);
+    try {
+      const supabase = createClient();
+      const { data: auth } = await supabase.auth.getUser();
+      const { error } = await supabase.from("ratings").insert({
+        stars,
+        chat_id: chatId,
+        user_id: auth.user?.id ?? null,
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.warn("[ExportStep] rating submit failed:", err);
+      setRatingSubmitted(null);
+      setRatingError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const aiPromptReady = !!storedAssets && storedAssets.length > 0 && !!expoConfig;
 
   const inCliMode = !!cliCallback && !!cliToken;
@@ -534,6 +558,44 @@ export default function ExportStep() {
           </Button>
         </div>
       )}
+
+      <div className="flex flex-col items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 pt-6">
+        <p className="text-sm text-zinc-600 dark:text-zinc-300">
+          {ratingSubmitted ? "Thanks for the feedback!" : "Rate your results"}
+        </p>
+        <div
+          className="flex items-center gap-1"
+          onMouseLeave={() => setRatingHover(0)}
+        >
+          {[1, 2, 3, 4, 5].map((star) => {
+            const active = star <= (ratingHover || ratingSubmitted || 0);
+            return (
+              <button
+                key={star}
+                type="button"
+                aria-label={`${star} star${star === 1 ? "" : "s"}`}
+                disabled={!!ratingSubmitted}
+                onMouseEnter={() => !ratingSubmitted && setRatingHover(star)}
+                onClick={() => handleSubmitRating(star)}
+                className="text-2xl leading-none cursor-pointer disabled:cursor-default transition-transform hover:scale-110 disabled:hover:scale-100"
+              >
+                <span
+                  className={
+                    active
+                      ? "text-yellow-400"
+                      : "text-zinc-300 dark:text-zinc-600"
+                  }
+                >
+                  ★
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {ratingError && (
+          <p className="text-xs text-red-600 dark:text-red-400">{ratingError}</p>
+        )}
+      </div>
     </div>
   );
 }

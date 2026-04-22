@@ -116,7 +116,11 @@ export interface UseChatPersistence {
   // Append a user message — persists text immediately, attachments upload in parallel.
   persistUserMessage: (msg: UserMessage) => Promise<void>;
   // Append an assistant icon message AND update chats.current_icon_path.
-  persistAssistantIcon: (msg: AssistantIconMessage, base64: string) => Promise<void>;
+  // Returns the uploaded image path so callers can sign it for sidebar thumbnails.
+  persistAssistantIcon: (
+    msg: AssistantIconMessage,
+    base64: string,
+  ) => Promise<string | null>;
   // Append a plain assistant text message (errors, notices).
   persistAssistantText: (msg: AssistantTextMessage) => Promise<void>;
   // Ensure a chat row exists; returns the chat id. No-op if one already exists.
@@ -264,12 +268,15 @@ export function useChatPersistence(): UseChatPersistence {
   );
 
   const persistAssistantIcon = useCallback(
-    async (msg: AssistantIconMessage, base64: string) => {
-      if (!isEnabled()) return;
+    async (
+      msg: AssistantIconMessage,
+      base64: string,
+    ): Promise<string | null> => {
+      if (!isEnabled()) return null;
       const userId = await getCurrentUserId();
-      if (!userId) return;
+      if (!userId) return null;
       const chatId = await ensureChatId();
-      if (!chatId) return;
+      if (!chatId) return null;
 
       const imagePath = await uploadImage({
         userId,
@@ -302,6 +309,8 @@ export function useChatPersistence(): UseChatPersistence {
           console.warn("[chatPersistence] patch current_icon_path failed:", e);
         }
       }
+
+      return imagePath;
     },
     [ensureChatId, update, updateMessage],
   );
