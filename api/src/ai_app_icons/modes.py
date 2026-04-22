@@ -48,37 +48,15 @@ MODES: dict[str, Mode] = {
             "- The glass IS the subject, not a frame around it. Do NOT draw a frosted rounded-square tile with a symbol inside — the symbol itself is the glass object, floating on transparent pixels."
         ),
     ),
-    "skeuomorphic": Mode(
-        id="skeuomorphic",
-        name="Skeuomorphic",
-        description="Realistic textures, lighting, and materials (iOS 6 era).",
+    "single-color": Mode(
+        id="single-color",
+        name="Single Color",
+        description="One-color silhouette on transparent background.",
         style_block=(
-            "- Skeuomorphic: render the symbol as a real physical object (leather, metal, wood, paper, fabric, glass, etc.) that could sit on a table.\n"
-            "- Rich material textures, realistic lighting, drop shadows, inner bevels, and subtle gradients live on the OBJECT's own surfaces.\n"
-            "- Saturated, warm palette; shading and highlights are essential.\n"
-            "- Do not wrap the object in a textured rounded-square tile. The texture belongs to the object; everything outside the object is transparent."
-        ),
-    ),
-    "minimal": Mode(
-        id="minimal",
-        name="Minimal",
-        description="Single clean symbol, monochrome, lots of negative space.",
-        style_block=(
-            "- Minimal: a single clean symbol built from 1-2 stroke weights or simple solid shapes.\n"
-            "- Monochrome or two-color palette.\n"
-            "- No shadows, gradients, or ornamentation.\n"
-            "- The negative space around the symbol IS the transparent background — do not draw a visible rectangle, circle, or colored field behind it."
-        ),
-    ),
-    "illustrative": Mode(
-        id="illustrative",
-        name="Illustrative",
-        description="Warm hand-drawn look with organic shapes and texture.",
-        style_block=(
-            "- Illustrative: a warm, hand-drawn-feeling subject with organic shapes and subtle paper / brush / grain texture on the subject's own surfaces.\n"
-            "- Painterly color blends and soft outlines; friendly and editorial.\n"
-            "- 4-6 harmonious colors with playful character.\n"
-            "- Texture and brushwork belong to the subject. Do not paint a textured square or rounded-rectangle panel behind the subject — surrounding pixels stay transparent."
+            "- Single-color artwork: the entire symbol is rendered in exactly ONE solid color against the transparent background.\n"
+            "- No gradients, no shading, no secondary colors, no outlines in a different color — just one flat fill shaping the silhouette.\n"
+            "- The shape must remain legible from its silhouette alone; rely on clean geometry and confident negative space.\n"
+            "- Do not render any rounded-square tile, circle, or colored backdrop behind the symbol; surrounding pixels stay transparent."
         ),
     ),
     "3d": Mode(

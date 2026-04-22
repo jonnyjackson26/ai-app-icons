@@ -22,7 +22,7 @@ class GenerateRequest(BaseModel):
     )
     mode: str | None = Field(
         default=None,
-        description="Style mode id (e.g. 'flat', 'ios-liquid-glass', 'skeuomorphic', 'minimal', 'illustrative', '3d'). Defaults to 'flat'.",
+        description="Style mode id (e.g. 'flat', 'ios-liquid-glass', 'single-color', '3d'). Defaults to 'flat'.",
         examples=["flat"],
     )
 

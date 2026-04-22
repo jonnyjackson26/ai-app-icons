@@ -125,9 +125,7 @@ When generating an icon, you can pick a visual style. The CLI asks after you ent
 | --- | --- | --- |
 | `flat` *(default)* | Flat | Bold geometric shapes, solid colors, no shadows. |
 | `ios-liquid-glass` | iOS Liquid Glass | Glossy translucent material with soft refraction. |
-| `skeuomorphic` | Skeuomorphic | Realistic textures, lighting, and materials. |
-| `minimal` | Minimal | Single clean symbol, monochrome, lots of whitespace. |
-| `illustrative` | Illustrative | Warm hand-drawn look with organic shapes. |
+| `single-color` | Single Color | One-color silhouette on transparent background. |
 | `3d` | 3D | Rendered 3D object with soft lighting and depth. |
 
 Mode definitions live in two places:
