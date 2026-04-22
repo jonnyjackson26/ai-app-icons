@@ -107,16 +107,21 @@ export default function ChatSidebar() {
           }`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header: app name (hidden when collapsed) + collapse/expand toggle */}
+          {/* Header: app name/subtitle (hidden when collapsed) + collapse toggle */}
           <div
             className={`flex items-center ${
-              collapsed ? "justify-center" : "justify-between"
-            } px-3 h-12 border-b border-zinc-200 dark:border-zinc-800`}
+              collapsed ? "justify-center" : "justify-between gap-2"
+            } px-3 py-2 border-b border-zinc-200 dark:border-zinc-800`}
           >
             {!collapsed && (
-              <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                AI App Icons
-              </span>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 leading-tight truncate">
+                  AI App Icons
+                </div>
+                <div className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-tight truncate">
+                  For Expo apps
+                </div>
+              </div>
             )}
             <div className="flex items-center gap-1">
               <button

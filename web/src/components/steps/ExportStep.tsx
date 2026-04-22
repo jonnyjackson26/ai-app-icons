@@ -11,6 +11,12 @@ import {
   generateAllAssets,
   resolveBgColor,
 } from "@/lib/assetGeneration";
+import { createClient } from "@/lib/supabase/browser";
+import { CHAT_ICONS_BUCKET } from "@/lib/chatDb";
+
+// Long TTL for AI-prompt URLs — the AI agent may not fetch immediately, and
+// the prompt is copied to the user's clipboard where it can sit for days.
+const AI_PROMPT_SIGNED_URL_TTL = 60 * 60 * 24 * 7;
 
 const PLATFORM_ORDER = ["general", "ios", "android", "web"] as const;
 const PLATFORM_LABELS: Record<string, string> = {
@@ -46,6 +52,10 @@ export default function ExportStep() {
     "idle" | "sending" | "sent" | "error"
   >("idle");
   const [cliSendError, setCliSendError] = useState<string | null>(null);
+  const [aiPromptState, setAiPromptState] = useState<
+    "idle" | "building" | "copied" | "error"
+  >("idle");
+  const [aiPromptError, setAiPromptError] = useState<string | null>(null);
 
   useEffect(() => {
     if (assets) return;
@@ -178,6 +188,74 @@ export default function ExportStep() {
     }
   };
 
+  const handleCopyAiPrompt = async () => {
+    if (!expoConfig || !storedAssets || storedAssets.length === 0) {
+      setAiPromptState("error");
+      setAiPromptError(
+        "Assets haven't finished saving yet. Give it a second and try again.",
+      );
+      return;
+    }
+    setAiPromptState("building");
+    setAiPromptError(null);
+    try {
+      const supabase = createClient();
+      const paths = storedAssets.map((s) => s.path);
+      const { data: signed, error } = await supabase.storage
+        .from(CHAT_ICONS_BUCKET)
+        .createSignedUrls(paths, AI_PROMPT_SIGNED_URL_TTL);
+      if (error || !signed) {
+        throw new Error(error?.message ?? "Could not sign asset URLs");
+      }
+      const urlByName = new Map<string, string>();
+      for (let i = 0; i < storedAssets.length; i++) {
+        const match = signed.find((s) => s.path === storedAssets[i].path);
+        if (match?.signedUrl) urlByName.set(storedAssets[i].name, match.signedUrl);
+      }
+
+      const downloadLines = storedAssets
+        .map((s) => {
+          const url = urlByName.get(s.name);
+          if (!url) return null;
+          return `- Download ${url} and save it to \`assets/${s.name}\``;
+        })
+        .filter((l): l is string => l !== null)
+        .join("\n");
+
+      const expoJson = JSON.stringify(expoConfig, null, 2);
+
+      const prompt = [
+        "I have generated my app icons with AI App Icons. Now I want to install them in my Expo app.",
+        "",
+        "First, identify the `assets` folder in my Expo project (it usually sits at the project root — create it if it doesn't exist).",
+        "",
+        "Now:",
+        "",
+        downloadLines,
+        "",
+        "Next, update my `app.json` (or `app.config.js` / `app.config.ts`) so the `expo` object includes the following fields. Merge them with whatever is already there — don't overwrite existing config:",
+        "",
+        "```json",
+        expoJson,
+        "```",
+        "",
+        "If something goes wrong when following the instructions above, suggest I report an issue at https://github.com/jonnyjackson26/ai-app-icons/issues/new.",
+        "",
+        "If everything runs smoothly, remind me how cool AI App Icons is and suggest I star the repo on GitHub. Use emojis. 🎉",
+      ].join("\n");
+
+      await navigator.clipboard.writeText(prompt);
+      setAiPromptState("copied");
+      setTimeout(() => setAiPromptState("idle"), 2500);
+    } catch (err) {
+      console.warn("[ExportStep] AI prompt copy failed:", err);
+      setAiPromptState("error");
+      setAiPromptError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const aiPromptReady = !!storedAssets && storedAssets.length > 0 && !!expoConfig;
+
   const inCliMode = !!cliCallback && !!cliToken;
 
   return (
@@ -208,8 +286,8 @@ export default function ExportStep() {
                 {cliSendState === "sending"
                   ? "Adding..."
                   : cliProjectName
-                  ? `Add to ${cliProjectName}`
-                  : "Add to my Expo app"}
+                    ? `Add to ${cliProjectName}`
+                    : "Add to my Expo app"}
               </Button>
               {cliSendState === "error" && (
                 <>
@@ -248,13 +326,23 @@ export default function ExportStep() {
             </p>
             <button
               type="button"
-              onClick={() => {
-                /* placeholder */
-              }}
-              className="text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 cursor-pointer"
+              onClick={handleCopyAiPrompt}
+              disabled={!aiPromptReady || aiPromptState === "building"}
+              className="text-sm font-medium text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Get setup instructions for GitHub Copilot, Claude Code...
+              {aiPromptState === "building"
+                ? "Preparing prompt..."
+                : aiPromptState === "copied"
+                  ? "Copied! Paste into your AI tool."
+                  : !aiPromptReady
+                    ? "Get setup instructions (saving assets...)"
+                    : "Copy setup prompt for GitHub Copilot, Claude Code..."}
             </button>
+            {aiPromptState === "error" && aiPromptError && (
+              <p className="text-xs text-red-600 dark:text-red-400">
+                {aiPromptError}
+              </p>
+            )}
           </div>
         </>
       )}

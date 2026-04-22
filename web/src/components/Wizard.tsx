@@ -83,18 +83,8 @@ export default function Wizard() {
   return (
     <div className="flex flex-col flex-1 min-h-0 w-full">
       <header className="shrink-0 border-b border-zinc-200 dark:border-zinc-800 px-4 py-3">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-          <div className="shrink-0">
-            <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 leading-tight">
-              AI App Icons
-            </h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-tight">
-              For Expo apps
-            </p>
-          </div>
-          <div className="flex-1 sm:flex sm:justify-end sm:items-center">
-            <StepIndicator current={step} />
-          </div>
+        <div className="max-w-4xl mx-auto flex items-center justify-center">
+          <StepIndicator current={step} />
         </div>
         {data.cliCallback && (
           <div className="max-w-4xl mx-auto mt-2 flex items-center justify-center gap-2 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 px-3 py-1.5">
