@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 };
 
 const EFFECTIVE_DATE = "April 22, 2026";
-const CONTACT_EMAIL = "support@aiappicons.com";
+const CONTACT_EMAIL = "me@jonny-jackson.com";
 
 export default function PrivacyPage() {
   return (

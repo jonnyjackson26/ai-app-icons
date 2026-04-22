@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 };
 
 const EFFECTIVE_DATE = "April 22, 2026";
-const CONTACT_EMAIL = "support@aiappicons.com";
+const CONTACT_EMAIL = "me@jonny-jackson.com";
 
 export default function TermsPage() {
   return (
@@ -162,12 +162,11 @@ export default function TermsPage() {
 
       <h2>14. Governing Law</h2>
       <p>
-        These Terms are governed by the laws of the jurisdiction in which the
-        operator of the Service resides, without regard to conflict-of-laws
-        rules. The courts located in that jurisdiction will have exclusive
-        jurisdiction over any dispute arising out of or relating to these
-        Terms, except that either party may seek injunctive relief in any
-        court of competent jurisdiction.
+        These Terms are governed by the laws of the State of Utah, without
+        regard to conflict-of-laws rules. The state and federal courts located
+        in Utah will have exclusive jurisdiction over any dispute arising out
+        of or relating to these Terms, except that either party may seek
+        injunctive relief in any court of competent jurisdiction.
       </p>
 
       <h2>15. Contact</h2>

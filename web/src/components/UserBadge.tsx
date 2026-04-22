@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronsUpDown, CreditCard, LogOut } from "lucide-react";
+import { ChevronsUpDown, CreditCard, FileText, LogOut, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
 import { useModals } from "./ModalProvider";
 import { useWizard } from "./WizardContext";
@@ -192,9 +192,31 @@ export default function UserBadge({ collapsed = false }: Props) {
             type="button"
             onClick={() => {
               setOpen(false);
-              openBilling("default");
+              router.push("/terms");
             }}
             className="flex w-full items-center gap-2 text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+          >
+            <FileText className="h-4 w-4" aria-hidden="true" />
+            Terms of Service
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              router.push("/privacy");
+            }}
+            className="flex w-full items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+          >
+            <Shield className="h-4 w-4" aria-hidden="true" />
+            Privacy Policy
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              openBilling("default");
+            }}
+            className="flex w-full items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150 cursor-pointer"
           >
             <CreditCard className="h-4 w-4" aria-hidden="true" />
             Billing & plan

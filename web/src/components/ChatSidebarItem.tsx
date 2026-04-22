@@ -62,7 +62,9 @@ export default function ChatSidebarItem({ chat, active, collapsed }: Props) {
 
   const content = (
     <div
-      className={`group relative flex items-center gap-2 pl-2 pr-1.5 py-1.5 rounded-md text-sm transition-colors duration-150 ${
+      className={`group relative flex items-center py-1.5 rounded-md text-sm transition-colors duration-150 ${
+        collapsed ? "justify-center px-0" : "gap-2 pl-2 pr-1.5"
+      } ${
         active
           ? "bg-zinc-200/70 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
           : "hover:bg-zinc-200/40 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300"

@@ -166,7 +166,13 @@ export default function ChatSidebar() {
           </div>
 
           {/* Chat list */}
-          <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
+          <nav
+            className={`flex-1 overflow-y-auto px-2 pb-2 space-y-0.5 ${
+              collapsed
+                ? "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                : ""
+            }`}
+          >
             {chats.length === 0 ? (
               !collapsed && (
                 <div className="flex flex-col items-center justify-center gap-2 px-3 py-10 text-center">
