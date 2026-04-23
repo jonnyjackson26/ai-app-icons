@@ -1,4 +1,4 @@
-import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { parse as babelParse } from "@babel/parser";
 import * as t from "@babel/types";
 import * as recast from "recast";
@@ -7,13 +7,11 @@ import { deepMerge } from "./deepMerge.js";
 
 export interface PatchResult {
   path: string;
-  backupPath: string;
   manual: boolean; // true = we couldn't patch automatically; user must paste
 }
 
 /**
  * Merge `expoPatch.expo` into the existing Expo config at `config.path`.
- * Creates a `.bak` alongside before writing.
  *
  * For JS/TS, handles:
  *   export default { ... }
@@ -29,16 +27,13 @@ export function patchConfig(
   config: DetectedConfig,
   expoPatch: { expo: Record<string, unknown> },
 ): PatchResult {
-  const backupPath = `${config.path}.bak`;
-  copyFileSync(config.path, backupPath);
-
   if (config.kind === "json" || config.kind === "json-config") {
     patchJson(config.path, expoPatch);
-    return { path: config.path, backupPath, manual: false };
+    return { path: config.path, manual: false };
   }
 
   const manual = !patchJs(config.path, config.kind === "ts", expoPatch);
-  return { path: config.path, backupPath, manual };
+  return { path: config.path, manual };
 }
 
 // --- JSON ---------------------------------------------------------------
@@ -97,7 +92,7 @@ function patchJs(
  * `recast` uses its own `ast-types` node type, but runtime shape matches
  * `@babel/types`. We cast at the boundary so babel-types' `isX` predicates work.
  */
-function findTargetObject(ast: unknown): t.ObjectExpression | null {
+export function findTargetObject(ast: unknown): t.ObjectExpression | null {
   let found: t.ObjectExpression | null = null;
   const bindings = collectModuleBindings(ast);
 
@@ -178,7 +173,7 @@ function resolveConfigExpression(
   return null;
 }
 
-function findObjectProperty(
+export function findObjectProperty(
   obj: t.ObjectExpression,
   name: string,
 ): t.ObjectProperty | null {

@@ -1,7 +1,10 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 
-const MAX_BODY_BYTES = 2 * 1024 * 1024; // 2 MB cap on loopback POST bodies.
+// The wizard handoff ships ~10 full-res PNGs as base64 (a 1284x2778 splash
+// plus seven 1024x1024 icons), which routinely totals 5–15 MB. Keep a
+// sanity cap on the loopback body but size it for the real payload.
+const MAX_BODY_BYTES = 50 * 1024 * 1024;
 
 export interface LoopbackHandle<T> {
   server: Server;

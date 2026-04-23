@@ -5,6 +5,7 @@ export interface CliArgs {
   help: boolean;
   version: boolean;
   output: string;
+  outputExplicit: boolean;
   configPath: string | null;
   apiUrl: string;
   apiUrlOverridden: boolean;
@@ -25,6 +26,7 @@ export function parseArgs(argv: string[]): CliArgs {
     help: false,
     version: false,
     output: "./assets",
+    outputExplicit: false,
     configPath: null,
     apiUrl: envApiUrl || DEFAULT_API_URL,
     apiUrlOverridden: !!envApiUrl,
@@ -43,6 +45,8 @@ export function parseArgs(argv: string[]): CliArgs {
         break;
       case "--yes":
       case "-y":
+      case "--force":
+      case "-f":
         args.yes = true;
         break;
       case "--help":
@@ -56,6 +60,7 @@ export function parseArgs(argv: string[]): CliArgs {
       case "--output":
       case "-o":
         args.output = requireValue(argv, ++i, a);
+        args.outputExplicit = true;
         break;
       case "--config":
       case "-c":
@@ -104,7 +109,9 @@ Usage:
   npx create-app-icon [options]
 
 Options:
-  --output <dir>         Where to write PNG assets (default: ./assets)
+  --output <dir>         Where to write PNG assets. Defaults to the directory
+                         that already contains your icon (from the Expo
+                         config); falls back to ./assets if no icon is set.
   --config <file>        Explicit path to Expo config (default: auto-detect)
   --api-url <url>        Override backend URL (also: AI_APP_ICONS_API_URL)
   --web                  Force the browser wizard. Auto-enabled when the
@@ -113,6 +120,9 @@ Options:
                          (default: https://ai-app-icons.vercel.app)
   --web-timeout <sec>    Timeout for the browser flow (default: 600)
   --yes, -y              Skip the final confirmation prompt
+  --force, -f            Alias for --yes. Skips the confirmation even when
+                         existing PNGs in the output directory would be
+                         overwritten.
   --help, -h             Show this help
   --version, -v          Show version
 

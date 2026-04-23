@@ -11,9 +11,19 @@ style, and pick a background. The CLI then:
 
 1. Calls the hosted backend at `https://ai-app-icons.fly.dev` to generate the
    icon and all Expo asset sizes.
-2. Writes PNGs into `./assets/` (icon, iOS light/dark/tinted, Android adaptive
-   foreground/background/monochrome, splash, web favicon).
-3. Patches your Expo config file in place (creates a `.bak` first).
+2. Writes PNGs into the directory that already holds your icon (read from the
+   Expo config). Falls back to `./assets/` if no icon is set. Files written:
+   `icon.png`, `icon-ios.png`, `icon-ios-dark.png`, `icon-ios-tinted.png`,
+   `adaptive-foreground.png`, `adaptive-background.png`,
+   `adaptive-monochrome.png`, `splash.png`, `splash-icon.png`, `favicon.png`.
+3. Patches your Expo config file in place.
+
+### Overwrites
+
+Assets are written with those fixed filenames. **Any existing file with the
+same name in the output directory is overwritten** — there is no backup. Before
+writing, the CLI lists every collision and asks you to confirm. Pass `--force`
+(or `-y`) to skip that prompt.
 
 Supported config files (auto-detected, in Expo's resolution order):
 
@@ -25,11 +35,16 @@ Supported config files (auto-detected, in Expo's resolution order):
 ## Options
 
 ```
---output <dir>     Asset output directory (default: ./assets)
+--output <dir>     Asset output directory. Defaults to the folder that already
+                   holds your icon (from the Expo config); falls back to
+                   ./assets.
 --config <file>    Explicit Expo config path (default: auto-detect)
 --api-url <url>    Override backend URL
---web              Open the browser wizard (coming soon; currently prints the URL)
---yes, -y          Skip the final confirmation prompt
+--web              Force the browser wizard (auto-enabled when the backend
+                   requires auth)
+--yes, -y          Skip the confirmation prompt
+--force, -f        Alias for --yes. Skips confirmation even when existing
+                   PNGs would be overwritten.
 --help, -h         Show help
 --version, -v      Show version
 ```

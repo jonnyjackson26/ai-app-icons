@@ -52,7 +52,7 @@ OPENAI_API_KEY=sk-...
 
 ### `npx create-app-icon` (for Expo projects)
 
-Run this inside an existing Expo project — it prompts for a description, generates the icon + all asset sizes via the hosted API, writes PNGs into `./assets/`, and patches your Expo config (`app.json`, `app.config.json`, `app.config.js`, or `app.config.ts`) in place with a `.bak` backup.
+Run this inside an existing Expo project — it prompts for a description, generates the icon + all asset sizes via the hosted API, writes PNGs into the directory that already holds your icon (falling back to `./assets/`), and patches your Expo config (`app.json`, `app.config.json`, `app.config.js`, or `app.config.ts`) in place. Any existing PNGs with colliding names are overwritten — the CLI lists them and asks for confirmation; pass `--force` to skip the prompt.
 
 ```bash
 cd path/to/your-expo-app

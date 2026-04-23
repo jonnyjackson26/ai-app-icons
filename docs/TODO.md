@@ -28,3 +28,5 @@ Icons: lucide-react ships dynamicIconImports — a name → () => import('./icon
 The tradeoff is complexity (virtualization + lazy loading) vs. the current curated approach. My recommendation: do emojis now (cheap win, big improvement), defer icons unless users start asking for ones we don't have. Want me to swap the emoji list?
 
 for not hardcoding icons and emojis
+
+right now we look for any icon.png or adaptive-icon.png and then place the assets in that parent folder, but would it be easier to just read the roots' app.config.ts/js or app.json, see what expo.ios.icon value's parent folder is, and write there? (for npx create-expo_app)

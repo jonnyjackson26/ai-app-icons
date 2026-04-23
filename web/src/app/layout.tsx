@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { ModalProvider } from "@/components/ModalProvider";
 import "./globals.css";
 
@@ -30,6 +31,7 @@ export default function RootLayout({
     >
       <body className="h-full flex flex-col overflow-hidden">
         <ModalProvider>{children}</ModalProvider>
+        <Analytics />
       </body>
     </html>
   );

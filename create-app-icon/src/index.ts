@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import kleur from "kleur";
 import { ApiClient, ApiError, type AssetsResponse } from "./api.js";
@@ -10,6 +10,7 @@ import {
   type DetectedConfig,
 } from "./detect.js";
 import { patchConfig } from "./patchConfig.js";
+import { readExpoIconDir } from "./readIconDir.js";
 import {
   promptBackground,
   promptConfirm,
@@ -58,6 +59,20 @@ async function main(): Promise<void> {
   }
   const relConfig = relative(process.cwd(), config.path) || config.path;
   console.log(kleur.dim(`Found Expo config: ${relConfig}`));
+
+  // Default the output directory to wherever the user's existing icon lives
+  // — respecting projects that keep icons in ./assets/icons, ./src/assets,
+  // etc. Only kicks in when --output wasn't passed explicitly.
+  if (!args.outputExplicit) {
+    const iconDirFromConfig = readExpoIconDir(config);
+    if (iconDirFromConfig) {
+      const absDir = resolve(dirname(config.path), iconDirFromConfig);
+      args.output = relative(process.cwd(), absDir) || absDir;
+      console.log(
+        kleur.dim(`Using existing icon directory: ${args.output}`),
+      );
+    }
+  }
 
   let result: AssetsResponse;
   if (args.web) {
@@ -129,9 +144,31 @@ async function finalizeResult(
   result: AssetsResponse,
 ): Promise<void> {
   const outputDir = args.output;
+
+  // The API returns expo_config with paths like "./assets/icon.png". Rewrite
+  // the "./assets/" prefix to match wherever we're actually writing so the
+  // patched config points at the right files.
+  rewriteExpoAssetPaths(
+    result.expo_config as Record<string, unknown>,
+    assetPathPrefix(args.output, config.path),
+  );
+
   console.log(kleur.bold("\nAbout to write:"));
   console.log(`  ${result.assets.length} PNGs → ${kleur.cyan(outputDir)}/`);
-  console.log(`  Patch config → ${kleur.cyan(relConfig)} (with .bak backup)`);
+  console.log(`  Patch config → ${kleur.cyan(relConfig)}`);
+
+  const clobbered = existingAssetCollisions(outputDir, result.assets.map((a) => a.name));
+  if (clobbered.length > 0) {
+    console.log();
+    console.log(
+      kleur.yellow(
+        `Warning: ${clobbered.length} existing file${clobbered.length === 1 ? "" : "s"} in ${outputDir}/ will be overwritten:`,
+      ),
+    );
+    for (const name of clobbered) {
+      console.log(kleur.yellow(`  - ${name}`));
+    }
+  }
 
   if (!args.yes) {
     const ok = await promptConfirm("Continue?", true);
@@ -162,14 +199,57 @@ async function finalizeResult(
     console.log();
   } else {
     console.log(kleur.green("  patched"), relConfig);
-    console.log(
-      kleur.dim("  backup  ") + relative(process.cwd(), patch.backupPath),
-    );
   }
 
   console.log(
     kleur.bold().green("\nDone! Try running `expo start` to see your new icon."),
   );
+}
+
+/**
+ * Return the subset of asset filenames that already exist in `outputDir`.
+ * These are the files that will be overwritten when we write the new assets;
+ * the caller lists them in the confirmation prompt so the user can bail.
+ */
+function existingAssetCollisions(outputDir: string, names: string[]): string[] {
+  const absDir = resolve(process.cwd(), outputDir);
+  return names.filter((n) => existsSync(join(absDir, n)));
+}
+
+/**
+ * Compute the "./assets/"-style prefix to use in the patched Expo config,
+ * based on where we're writing files (`outputDir`, resolved from cwd) and
+ * where the config lives (`configPath`). Always returns a posix path ending
+ * in "/", e.g. "./assets/icons/".
+ */
+function assetPathPrefix(outputDir: string, configPath: string): string {
+  const absOut = resolve(process.cwd(), outputDir);
+  const absConfigDir = dirname(configPath);
+  let rel = relative(absConfigDir, absOut).replace(/\\/g, "/");
+  if (rel === "") rel = ".";
+  if (!rel.startsWith(".") && !rel.startsWith("/")) rel = "./" + rel;
+  return rel.endsWith("/") ? rel : rel + "/";
+}
+
+/**
+ * Recursively rewrite any "./assets/<file>" string value in the Expo config
+ * to use `toPrefix + <file>` instead. Leaves non-matching strings (hex
+ * colors, URLs, etc.) alone.
+ */
+function rewriteExpoAssetPaths(
+  obj: Record<string, unknown>,
+  toPrefix: string,
+  fromPrefix = "./assets/",
+): void {
+  if (toPrefix === fromPrefix) return;
+  for (const key of Object.keys(obj)) {
+    const v = obj[key];
+    if (typeof v === "string" && v.startsWith(fromPrefix)) {
+      obj[key] = toPrefix + v.slice(fromPrefix.length);
+    } else if (v && typeof v === "object" && !Array.isArray(v)) {
+      rewriteExpoAssetPaths(v as Record<string, unknown>, toPrefix, fromPrefix);
+    }
+  }
 }
 
 function apiErrorMessage(err: unknown, apiUrl: string): string {
