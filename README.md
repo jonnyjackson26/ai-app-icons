@@ -40,7 +40,7 @@ ai-app-icons/
 ## Quick start
 
 ```bash
-git clone https://github.com/Jonathan/ai-app-icons.git
+git clone https://github.com/jonnyjackson26/ai-app-icons.git
 cd ai-app-icons
 ```
 
