@@ -68,9 +68,11 @@ jobs:
         run: npm publish --access public
 
       # Rebase in case another commit landed while we were building.
+      # --autostash handles any stray working-tree changes left by npm
+      # (e.g. lockfile rewrites after the npm@latest upgrade).
       # Then push; --follow-tags also pushes the new version tag.
       - name: Push version bump
         working-directory: .
         run: |
-          git pull --rebase origin main
+          git pull --rebase --autostash origin main
           git push --follow-tags
