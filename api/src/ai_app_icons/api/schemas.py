@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+# Caps on untrusted input. Loose enough for real use, tight enough to keep
+# a single bad request from blowing up token cost or memory.
+MAX_DESCRIPTION_LEN = 2000
+MAX_INSTRUCTION_LEN = 2000
+MAX_IMAGE_BASE64_LEN = 10 * 1024 * 1024  # ~7.5 MB raw image, base64-inflated.
+
+BackgroundType = Literal["solid", "gradient", "image"]
+IosSingleColorStyle = Literal["masked", "solid"]
 
 
 # ---------------------------------------------------------------------------
@@ -15,15 +26,19 @@ class GenerateRequest(BaseModel):
         ...,
         description="Plain-language description of the app icon to generate",
         examples=["A friendly robot mascot for a coding education app"],
+        min_length=1,
+        max_length=MAX_DESCRIPTION_LEN,
     )
     size: str = Field(
         default="1024x1024",
-        description="Image dimensions",
+        description="Image dimensions, e.g. 1024x1024",
+        pattern=r"^\d{3,5}x\d{3,5}$",
     )
     mode: str | None = Field(
         default=None,
         description="Style mode id (e.g. 'flat', 'ios-liquid-glass', 'single-color', '3d'). Defaults to 'flat'.",
         examples=["flat"],
+        max_length=64,
     )
 
 
@@ -32,15 +47,19 @@ class EditRequest(BaseModel):
     image_base64: str = Field(
         ...,
         description="Base64-encoded PNG of the current icon",
+        max_length=MAX_IMAGE_BASE64_LEN,
     )
     instruction: str = Field(
         ...,
         description="What to change about the icon",
         examples=["Make the colors warmer", "Add a subtle shadow"],
+        min_length=1,
+        max_length=MAX_INSTRUCTION_LEN,
     )
     size: str = Field(
         default="1024x1024",
-        description="Image dimensions",
+        description="Image dimensions, e.g. 1024x1024",
+        pattern=r"^\d{3,5}x\d{3,5}$",
     )
 
 
@@ -49,12 +68,13 @@ class AssetsRequest(BaseModel):
     image_base64: str = Field(
         ...,
         description="Base64-encoded PNG of the source icon",
+        max_length=MAX_IMAGE_BASE64_LEN,
     )
     background: BackgroundConfig = Field(
         ...,
         description="Background configuration",
     )
-    ios_single_color_style: str = Field(
+    ios_single_color_style: IosSingleColorStyle = Field(
         default="masked",
         description=(
             "How to render the iOS dark variant when the logo is "
@@ -73,21 +93,24 @@ class SingleColorResponse(BaseModel):
 
 class BackgroundConfig(BaseModel):
     """Background configuration for asset generation."""
-    type: str = Field(
+    type: BackgroundType = Field(
         ...,
         description="Background type: solid, gradient, or image",
     )
     color: str | None = Field(
         default=None,
         description="Hex color for solid backgrounds (e.g. #1a1a2e)",
+        max_length=9,
     )
     colors: list[str] | None = Field(
         default=None,
         description="List of hex colors for gradient backgrounds",
+        max_length=8,
     )
     direction: str = Field(
         default="to-bottom-right",
         description="Gradient direction (e.g. to-bottom, to-right, to-bottom-right)",
+        max_length=32,
     )
 
 

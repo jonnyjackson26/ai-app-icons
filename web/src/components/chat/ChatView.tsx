@@ -190,7 +190,6 @@ export default function ChatView() {
   );
 
   const onPickBackground = useCallback(() => {
-    console.log("[ChatView] onPickBackground → setStep(background)");
     setStep("background");
   }, [setStep]);
 
@@ -222,15 +221,19 @@ export default function ChatView() {
       // Push the sidebar row immediately (after a single createChat roundtrip)
       // with a data-URL thumbnail — don't make the user wait for the full
       // upload + patch chain that appendAndPersistAssistantIcon runs.
-      ensureChatId("Uploaded logo").then((chatId) => {
-        if (!chatId) return;
-        upsertLocal({
-          id: chatId,
-          title: "Uploaded logo",
-          thumbnailUrl: `data:image/png;base64,${base64}`,
-          lastMessageAt: new Date().toISOString(),
+      ensureChatId("Uploaded logo")
+        .then((chatId) => {
+          if (!chatId) return;
+          upsertLocal({
+            id: chatId,
+            title: "Uploaded logo",
+            thumbnailUrl: `data:image/png;base64,${base64}`,
+            lastMessageAt: new Date().toISOString(),
+          });
+        })
+        .catch((err) => {
+          console.error("[ChatView] sidebar upsert after upload failed:", err);
         });
-      });
       appendAndPersistAssistantIcon(base64);
     });
   };
@@ -298,28 +301,32 @@ export default function ChatView() {
       appendMessage(iconMsg);
       // Fire-and-forget persistence — the UI already has the icon on screen,
       // Storage upload + DB insert happens in the background.
-      persistAssistantIcon(iconMsg, iconBase64).then(async (imagePath) => {
-        // Read the freshest chatId via ref — the closure could have been
-        // captured before the lazy chat creation landed in context state.
-        const chatId = chatIdRef.current;
-        if (!chatId) return;
-        // Sign the uploaded icon so the sidebar thumbnail uses a stable path
-        // (vs. the data URL pushed by callers that upsert before upload).
-        let thumbnailUrl: string | null = null;
-        if (imagePath) {
-          const { data: signed } = await createClient()
-            .storage.from(CHAT_ICONS_BUCKET)
-            .createSignedUrl(imagePath, 60 * 60);
-          thumbnailUrl = signed?.signedUrl ?? null;
-        }
-        upsertLocal({
-          id: chatId,
-          currentIconPath: imagePath ?? null,
-          thumbnailUrl,
-          lastMessageAt: new Date().toISOString(),
+      persistAssistantIcon(iconMsg, iconBase64)
+        .then(async (imagePath) => {
+          // Read the freshest chatId via ref — the closure could have been
+          // captured before the lazy chat creation landed in context state.
+          const chatId = chatIdRef.current;
+          if (!chatId) return;
+          // Sign the uploaded icon so the sidebar thumbnail uses a stable path
+          // (vs. the data URL pushed by callers that upsert before upload).
+          let thumbnailUrl: string | null = null;
+          if (imagePath) {
+            const { data: signed } = await createClient()
+              .storage.from(CHAT_ICONS_BUCKET)
+              .createSignedUrl(imagePath, 60 * 60);
+            thumbnailUrl = signed?.signedUrl ?? null;
+          }
+          upsertLocal({
+            id: chatId,
+            currentIconPath: imagePath ?? null,
+            thumbnailUrl,
+            lastMessageAt: new Date().toISOString(),
+          });
+          refreshChats();
+        })
+        .catch((err) => {
+          console.error("[ChatView] persist assistant icon failed:", err);
         });
-        refreshChats();
-      });
     },
     [appendMessage, persistAssistantIcon, upsertLocal, refreshChats],
   );
@@ -329,15 +336,19 @@ export default function ChatView() {
       setPickerOpen(false);
       update({ iconBase64: base64, iconUrl: null, iconPath: null, editMessage: "", error: null });
       setStep("background");
-      ensureChatId(label).then((chatId) => {
-        if (!chatId) return;
-        upsertLocal({
-          id: chatId,
-          title: label,
-          thumbnailUrl: `data:image/png;base64,${base64}`,
-          lastMessageAt: new Date().toISOString(),
+      ensureChatId(label)
+        .then((chatId) => {
+          if (!chatId) return;
+          upsertLocal({
+            id: chatId,
+            title: label,
+            thumbnailUrl: `data:image/png;base64,${base64}`,
+            lastMessageAt: new Date().toISOString(),
+          });
+        })
+        .catch((err) => {
+          console.error("[ChatView] sidebar upsert after picker failed:", err);
         });
-      });
       appendAndPersistAssistantIcon(base64);
     },
     [update, setStep, ensureChatId, upsertLocal, appendAndPersistAssistantIcon],
@@ -366,7 +377,6 @@ export default function ChatView() {
   // Does NOT append the user message — caller owns that so retries don't duplicate.
   const executeRequest = useCallback(
     async (payload: RequestPayload) => {
-      console.log("[ChatView] executeRequest", payload.kind);
       const op: "generate" | "refine" =
         payload.kind === "generate" ? "generate" : "refine";
       setSending(true);
@@ -461,7 +471,7 @@ export default function ChatView() {
 
     let replayed = false;
 
-    async function tryReplay(trigger: string) {
+    async function tryReplay() {
       if (replayed) return;
 
       // Migrate anonymous transcript first (before replay so the replayed
@@ -494,7 +504,6 @@ export default function ChatView() {
             sessionStorage.removeItem(RETRY_STORAGE_KEY);
           } catch {}
         }
-        console.log("[ChatView] replay (memory) trigger=", trigger);
         removeMessage(inMemory.errorMessageId);
         await executeRequest(inMemory.payload);
         return;
@@ -520,7 +529,6 @@ export default function ChatView() {
 
       replayed = true;
       sessionStorage.removeItem(RETRY_STORAGE_KEY);
-      console.log("[ChatView] replay (sessionStorage) trigger=", trigger);
 
       if (payload.kind === "generate") {
         const userMsg: ChatMessage = {
@@ -538,7 +546,7 @@ export default function ChatView() {
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) return;
       if (event !== "SIGNED_IN" && event !== "INITIAL_SESSION") return;
-      tryReplay(event);
+      tryReplay();
     });
     return () => sub.subscription.unsubscribe();
   }, [
@@ -551,12 +559,8 @@ export default function ChatView() {
 
   const onSend = useCallback(async () => {
     const trimmed = text.trim();
-    if (!trimmed || sending) {
-      console.log("[ChatView] onSend ignored:", { empty: !trimmed, sending });
-      return;
-    }
+    if (!trimmed || sending) return;
     cancelPromptStream();
-    console.log("[ChatView] onSend (text len:", trimmed.length, ")");
 
     let payload: RequestPayload;
 

@@ -101,7 +101,6 @@ export default function BackgroundStep() {
   const iconBase64 = data.iconBase64;
 
   const handleGenerate = () => {
-    console.log("[BackgroundStep] Generate Assets → setStep(export)");
     // Clear previously-persisted assets too, so ExportStep regenerates instead
     // of rehydrating stale assets that were generated with the old background.
     update({

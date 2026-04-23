@@ -48,6 +48,21 @@ tiny, thin, or intricate details that vanish at 48 x 48 pixels.
 - Absolutely NO text, letters, numbers, or written words anywhere.
 - NO device mockup, phone frame, browser UI, or app-store chrome.
 
+Color fidelity (critical):
+- If the app description above names specific colors — hex codes \
+(e.g. #FF3B30), RGB values, or named colors (e.g. "cobalt blue", \
+"mint green", "hot pink") — those colors MUST appear in the icon, \
+matched as closely as possible.
+- Apply named colors to the most prominent element they describe: \
+"a red fox" means the fox is red; "blue and yellow waves" means the \
+waves use blue and yellow. Do not swap, reinterpret, or "improve" the \
+requested color.
+- If the user specifies a color, it overrides any palette guidance in \
+the Visual style section below — use the requested color even if the \
+style would normally suggest a different palette size or hue.
+- If no color is specified, pick a palette that fits the style and the \
+app concept.
+
 Visual style:
 {style_block}
 """
@@ -58,6 +73,16 @@ Edit this app icon. Apply the following change and NOTHING else:
 
 Preserve the exact same style, composition, and layout for everything not \
 mentioned.
+
+Color fidelity (critical):
+- If the instruction names a specific color — hex code (e.g. #FF3B30), \
+RGB value, or named color (e.g. "cobalt blue", "mint green", "hot pink") \
+— the output MUST use that exact color, matched as closely as possible.
+- Apply the requested color to the element the instruction points at: \
+"make the background navy" changes only the background; "turn the fox \
+orange" changes only the fox. Leave every other color untouched.
+- Do not swap the requested color for a "better" or "more harmonious" \
+one. Match the hue the user asked for, even if it clashes.
 
 Hard rules (enforce these even if the source image violates them):
 - The output background MUST be fully transparent (alpha = 0 around the \

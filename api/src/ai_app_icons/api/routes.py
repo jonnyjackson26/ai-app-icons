@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import logging
 import tempfile
 from io import BytesIO
 from pathlib import Path
@@ -11,6 +12,10 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from openai import APIError
 from PIL import Image
+
+logger = logging.getLogger(__name__)
+
+_INTERNAL_ERROR = "Internal error while generating icon; try again shortly."
 
 from ai_app_icons import __version__
 from ai_app_icons.assets import ASSETS, build_expo_config, generate_all_assets
@@ -71,12 +76,6 @@ async def config():
     return ConfigResponse(auth_required=auth_required())
 
 
-@router.get("/sentry-debug", include_in_schema=False)
-async def sentry_debug():
-    """Trigger a ZeroDivisionError to verify Sentry is wired up."""
-    _ = 1 / 0
-
-
 @router.post("/generate", response_model=ImageResponse)
 async def generate(
     req: GenerateRequest,
@@ -94,8 +93,9 @@ async def generate(
         raise HTTPException(status_code=400, detail=str(e))
     except APIError:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("[generate] unexpected failure")
+        raise HTTPException(status_code=500, detail=_INTERNAL_ERROR)
 
     record_usage(user, "generate", usage)
     return ImageResponse(image_base64=_image_to_base64(image))
@@ -121,8 +121,9 @@ async def edit(
         )
     except APIError:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("[edit] unexpected failure")
+        raise HTTPException(status_code=500, detail=_INTERNAL_ERROR)
 
     record_usage(user, "edit", usage)
     return ImageResponse(
@@ -159,8 +160,9 @@ async def assets(
             )
         except APIError:
             raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        except Exception:
+            logger.exception("[assets] unexpected failure")
+            raise HTTPException(status_code=500, detail=_INTERNAL_ERROR)
 
         asset_files: list[AssetFile] = []
         for asset in ASSETS:

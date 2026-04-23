@@ -108,6 +108,3 @@ def record_usage(
         get_service_client().table("usage_events").insert(row).execute()
     except Exception:
         logger.exception("Failed to record usage_event (user=%s kind=%s)", user.id, kind)
-
-
-CheckQuota = Depends(check_quota)

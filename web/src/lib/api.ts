@@ -38,10 +38,7 @@ export class AuthRequiredError extends Error {
 }
 
 async function getAccessToken(): Promise<string | null> {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    console.log("[api] no NEXT_PUBLIC_SUPABASE_URL — self-host mode, no bearer");
-    return null;
-  }
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
   try {
     const supabase = createClient();
     const { data, error } = await supabase.auth.getSession();
@@ -49,12 +46,7 @@ async function getAccessToken(): Promise<string | null> {
       console.warn("[api] getSession error:", error.message);
       return null;
     }
-    const token = data.session?.access_token ?? null;
-    console.log(
-      "[api] access token:",
-      token ? `${token.slice(0, 12)}... (len=${token.length})` : "null",
-    );
-    return token;
+    return data.session?.access_token ?? null;
   } catch (e) {
     console.warn("[api] getSession threw:", e);
     return null;
@@ -68,12 +60,6 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const url = `${API_URL}${path}`;
-  console.log(
-    "[api]",
-    options?.method ?? "GET",
-    url,
-    token ? "(authed)" : "(no bearer)",
-  );
 
   let res: Response;
   try {
@@ -86,8 +72,6 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
       })`,
     );
   }
-
-  console.log("[api] ←", res.status, url);
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);

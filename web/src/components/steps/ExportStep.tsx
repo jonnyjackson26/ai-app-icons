@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
@@ -14,6 +14,7 @@ import {
   resolveBgColor,
   type IosSingleColorStyle,
 } from "@/lib/assetGeneration";
+import type { AssetFile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/browser";
 import { CHAT_ICONS_BUCKET } from "@/lib/chatDb";
 
@@ -65,6 +66,11 @@ export default function ExportStep() {
   const [configCopied, setConfigCopied] = useState(false);
   const [isSingleColorLogo, setIsSingleColorLogo] = useState<boolean | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  // Cache regenerated asset sets per style within a single mount. Keyed by
+  // style id so toggling between masked/solid reuses a previous result
+  // instead of re-running the full canvas pipeline.
+  const styleCacheRef = useRef<Map<IosSingleColorStyle, AssetFile[]>>(new Map());
+  const styleCacheKeyRef = useRef<string | null>(null);
   // Tracks whether Storage persistence is in-flight, succeeded, or gave up
   // (anonymous user, self-host, or upload error). Without this, the AI-prompt
   // button label falls back to "saving assets..." forever when persist resolves
@@ -90,7 +96,6 @@ export default function ExportStep() {
 
     // Rehydrate from Storage if this chat already has persisted assets.
     if (storedAssets && storedAssets.length > 0) {
-      console.log("[ExportStep] rehydrating", storedAssets.length, "assets from storage");
       rehydrateStoredAssets(storedAssets)
         .then((hydrated) => {
           if (cancelled || hydrated.length === 0) return;
@@ -112,7 +117,6 @@ export default function ExportStep() {
     // First-time generation requires the source icon bytes.
     if (!iconBase64) return;
 
-    console.log("[ExportStep] generating assets client-side");
     (async () => {
       try {
         const generated = await generateAllAssets(
@@ -123,6 +127,10 @@ export default function ExportStep() {
         if (cancelled) return;
         const bgColor = resolveBgColor(backgroundConfig);
         const expo = buildExpoConfig(bgColor);
+        // Seed the style cache for this (icon, bg) pair so toggling the iOS
+        // single-color style can reuse already-rendered assets.
+        styleCacheRef.current = new Map([[iosSingleColorStyle, generated]]);
+        styleCacheKeyRef.current = `${iconBase64.length}:${JSON.stringify(backgroundConfig)}`;
         update({
           assets: generated,
           expoConfig: expo,
@@ -140,33 +148,20 @@ export default function ExportStep() {
         // would throw away a successful persist. `update()` writes to the
         // shared wizard context (safe across re-runs), and React 18 silently
         // no-ops setState on a truly-unmounted component.
-        const persistStart = performance.now();
-        console.log("[persist] ExportStep calling persistAssets");
         const timeout = new Promise<"timeout">((resolve) =>
           setTimeout(() => resolve("timeout"), PERSIST_TIMEOUT_MS),
         );
         Promise.race([persistAssets(generated, expo, bgColor), timeout])
           .then((stored) => {
-            const elapsed = Math.round(performance.now() - persistStart);
-            if (stored === "timeout") {
-              console.warn(
-                `[persist] TOP-LEVEL TIMEOUT after ${elapsed}ms — giving up on AI prompt feature`,
-              );
+            if (stored === "timeout" || stored.length === 0) {
               setPersistState("unavailable");
               return;
             }
-            if (stored.length === 0) {
-              console.log(`[persist] resolved empty after ${elapsed}ms — marking unavailable`);
-              setPersistState("unavailable");
-              return;
-            }
-            console.log(`[persist] resolved with ${stored.length} assets in ${elapsed}ms`);
             update({ storedAssets: stored, hasAssets: true });
             setPersistState("ready");
           })
           .catch((e) => {
-            const elapsed = Math.round(performance.now() - persistStart);
-            console.warn(`[persist] threw after ${elapsed}ms:`, e);
+            console.warn("[persist] ExportStep persist threw:", e);
             setPersistState("unavailable");
           });
       } catch (err) {
@@ -219,6 +214,29 @@ export default function ExportStep() {
   const handleStyleChange = async (style: IosSingleColorStyle) => {
     if (style === iosSingleColorStyle || !iconBase64) return;
     update({ iosSingleColorStyle: style });
+
+    // Invalidate the style cache if the (icon, bg) pair has drifted from
+    // what was cached (defensive — handleStyleChange shouldn't run under a
+    // different icon/bg, but guarding keeps stale assets from leaking in).
+    const cacheKey = `${iconBase64.length}:${JSON.stringify(backgroundConfig)}`;
+    if (styleCacheKeyRef.current !== cacheKey) {
+      styleCacheRef.current = new Map();
+      styleCacheKeyRef.current = cacheKey;
+    }
+
+    const cached = styleCacheRef.current.get(style);
+    if (cached) {
+      const bgColor = resolveBgColor(backgroundConfig);
+      const expo = buildExpoConfig(bgColor);
+      update({
+        assets: cached,
+        expoConfig: expo,
+        backgroundColor: bgColor,
+        error: null,
+      });
+      return;
+    }
+
     setRegenerating(true);
     try {
       const generated = await generateAllAssets(
@@ -226,6 +244,7 @@ export default function ExportStep() {
         backgroundConfig,
         style,
       );
+      styleCacheRef.current.set(style, generated);
       const bgColor = resolveBgColor(backgroundConfig);
       const expo = buildExpoConfig(bgColor);
       update({
@@ -238,9 +257,15 @@ export default function ExportStep() {
         .then((stored) => {
           if (stored.length > 0) update({ storedAssets: stored, hasAssets: true });
         })
-        .catch((e) => console.warn("[ExportStep] persist after style change failed:", e));
+        .catch((e) => {
+          console.error("[ExportStep] persist after style change failed:", e);
+          setPersistState("unavailable");
+        });
     } catch (err) {
-      console.warn("[ExportStep] regenerate failed:", err);
+      console.error("[ExportStep] regenerate failed:", err);
+      update({
+        error: err instanceof Error ? err.message : "Regeneration failed",
+      });
     } finally {
       setRegenerating(false);
     }

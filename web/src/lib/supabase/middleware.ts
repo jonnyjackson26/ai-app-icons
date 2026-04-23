@@ -29,16 +29,7 @@ export async function updateSession(request: NextRequest) {
 
   const {
     data: { user },
-    error,
   } = await supabase.auth.getUser();
-
-  console.log(
-    "[middleware]",
-    request.nextUrl.pathname,
-    "user=",
-    user?.email ?? null,
-    error ? "err=" + error.message : "",
-  );
 
   return { response, user, authEnabled: true as const };
 }

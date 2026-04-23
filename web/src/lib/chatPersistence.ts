@@ -70,9 +70,6 @@ async function uploadImage(args: UploadArgs): Promise<string | null> {
     path = `${args.userId}/${args.chatId}/assets/${args.name ?? args.messageId}.png`;
   }
   const blob = base64ToBlob(args.base64);
-  const sizeKB = Math.round(blob.size / 1024);
-  const started = performance.now();
-  console.log(`[persist] upload start: ${path} (${sizeKB}KB)`);
   const uploadP = supabase.storage
     .from(CHAT_ICONS_BUCKET)
     .upload(path, blob, { contentType: "image/png", upsert: true })
@@ -81,16 +78,14 @@ async function uploadImage(args: UploadArgs): Promise<string | null> {
     setTimeout(() => resolve({ kind: "timeout" }), UPLOAD_TIMEOUT_MS),
   );
   const result = await Promise.race([uploadP, timeoutP]);
-  const elapsed = Math.round(performance.now() - started);
   if (result.kind === "timeout") {
-    console.warn(`[persist] upload TIMEOUT after ${elapsed}ms: ${path}`);
+    console.warn(`[persist] upload TIMEOUT: ${path}`);
     return null;
   }
   if (result.error) {
-    console.warn(`[persist] upload FAILED after ${elapsed}ms: ${path} — ${result.error.message}`);
+    console.warn(`[persist] upload FAILED: ${path} — ${result.error.message}`);
     return null;
   }
-  console.log(`[persist] upload done in ${elapsed}ms: ${path}`);
   return path;
 }
 
@@ -106,8 +101,6 @@ export async function uploadAssetsBatch(
   assets: AssetFile[],
 ): Promise<StoredAsset[]> {
   if (!isEnabled()) return [];
-  const batchStart = performance.now();
-  console.log(`[persist] batch start: ${assets.length} assets for chat ${chatId}`);
   const results = await Promise.all(
     assets.map(async (a) => {
       const path = await uploadImage({
@@ -130,12 +123,7 @@ export async function uploadAssetsBatch(
       } satisfies StoredAsset;
     }),
   );
-  const filtered = results.filter((r): r is StoredAsset => r !== null);
-  const batchElapsed = Math.round(performance.now() - batchStart);
-  console.log(
-    `[persist] batch done in ${batchElapsed}ms: ${filtered.length}/${assets.length} uploaded`,
-  );
-  return filtered;
+  return results.filter((r): r is StoredAsset => r !== null);
 }
 
 export interface UseChatPersistence {
@@ -396,40 +384,21 @@ export function useChatPersistence(): UseChatPersistence {
       expoConfig: Record<string, unknown>,
       backgroundColor: string,
     ): Promise<StoredAsset[]> => {
-      console.log("[persist] persistAssets entry");
-      if (!isEnabled()) {
-        console.log("[persist] skip: supabase not configured (self-host)");
-        return [];
-      }
-      const authStart = performance.now();
+      if (!isEnabled()) return [];
       const userId = await getCurrentUserId();
-      const authElapsed = Math.round(performance.now() - authStart);
-      if (!userId) {
-        console.log(`[persist] skip: no signed-in user (auth check ${authElapsed}ms)`);
-        return [];
-      }
-      console.log(`[persist] auth check ${authElapsed}ms → user ${userId}`);
+      if (!userId) return [];
       const chatId = chatIdRef.current;
-      if (!chatId) {
-        console.log("[persist] skip: no chatId yet");
-        return [];
-      }
+      if (!chatId) return [];
       const stored = await uploadAssetsBatch(userId, chatId, assets);
-      if (stored.length === 0) {
-        console.log("[persist] all uploads failed or timed out");
-        return [];
-      }
+      if (stored.length === 0) return [];
       // Fire-and-forget the DB patch — uploads are the expensive part and are
       // already done. Returning `stored` now unblocks ExportStep's "saving..."
       // state even if the patch is slow or stalls.
-      console.log(`[persist] firing patchChat for ${stored.length} assets`);
       patchChat(chatId, {
         assets: stored,
         expoConfig,
         backgroundColor,
-      })
-        .then(() => console.log("[persist] patchChat done"))
-        .catch((e) => console.warn("[persist] patchChat failed:", e));
+      }).catch((e) => console.warn("[persist] patchChat failed:", e));
       return stored;
     },
     [],

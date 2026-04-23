@@ -90,14 +90,25 @@ def _verify_supabase_jwt(token: str) -> dict[str, Any]:
 
 
 def _fetch_profile(user_id: str) -> dict[str, Any]:
-    client = get_service_client()
-    res = (
-        client.table("profiles")
-        .select("tier, subscription_status, current_period_end")
-        .eq("user_id", user_id)
-        .limit(1)
-        .execute()
-    )
+    # Raises on infrastructure failures so a Supabase outage surfaces as 503
+    # instead of silently downgrading every signed-in user to the free tier.
+    # An empty result set (user has no profile row yet) still means "free" —
+    # that's the legitimate new-user case.
+    try:
+        res = (
+            get_service_client()
+            .table("profiles")
+            .select("tier, subscription_status, current_period_end")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception:
+        logger.exception("[auth] profile fetch failed for user_id=%s", user_id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Profile service unavailable; try again shortly.",
+        )
     rows = res.data or []
     if rows:
         return rows[0]

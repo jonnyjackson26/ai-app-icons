@@ -62,10 +62,6 @@ export default function Wizard() {
   const cliProjectRaw = params.get("cli_project");
 
   useEffect(() => {
-    console.log("[wizard] cli params:", {
-      cli_callback: cliCallbackRaw,
-      cli_token: cliTokenRaw ? `${cliTokenRaw.slice(0, 8)}...` : null,
-    });
     if (!cliCallbackRaw || !cliTokenRaw) return;
     if (data.cliCallback === cliCallbackRaw && data.cliToken === cliTokenRaw) return;
     if (!isLoopbackHttpUrl(cliCallbackRaw)) {
@@ -77,7 +73,6 @@ export default function Wizard() {
       cliToken: cliTokenRaw,
       cliProjectName: cliProjectRaw || null,
     });
-    console.log("[wizard] CLI mode active");
   }, [cliCallbackRaw, cliTokenRaw, cliProjectRaw, data.cliCallback, data.cliToken, update]);
 
   return (

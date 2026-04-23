@@ -1,6 +1,8 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 
+const MAX_BODY_BYTES = 2 * 1024 * 1024; // 2 MB cap on loopback POST bodies.
+
 export interface LoopbackHandle<T> {
   server: Server;
   port: number;
@@ -79,6 +81,11 @@ function handleRequest<T>(
   }
 
   if (req.method === "POST" && req.url === "/result") {
+    if (!originOk) {
+      res.statusCode = 403;
+      res.end(JSON.stringify({ error: "bad origin" }));
+      return;
+    }
     if (!tokenOk(req.headers["x-cli-token"], opts.token)) {
       res.statusCode = 403;
       res.end(JSON.stringify({ error: "bad token" }));
@@ -116,8 +123,21 @@ function tokenOk(header: string | string[] | undefined, expected: string): boole
 function readJson(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on("data", (c: Buffer) => chunks.push(c));
+    let total = 0;
+    let aborted = false;
+    req.on("data", (c: Buffer) => {
+      if (aborted) return;
+      total += c.length;
+      if (total > MAX_BODY_BYTES) {
+        aborted = true;
+        req.destroy();
+        reject(new Error(`payload exceeds ${MAX_BODY_BYTES} bytes`));
+        return;
+      }
+      chunks.push(c);
+    });
     req.on("end", () => {
+      if (aborted) return;
       try {
         const text = Buffer.concat(chunks).toString("utf8");
         resolve(text ? JSON.parse(text) : null);
@@ -125,6 +145,9 @@ function readJson(req: IncomingMessage): Promise<unknown> {
         reject(err);
       }
     });
-    req.on("error", reject);
+    req.on("error", (err) => {
+      if (aborted) return;
+      reject(err);
+    });
   });
 }

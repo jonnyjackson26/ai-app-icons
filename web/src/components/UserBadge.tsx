@@ -35,22 +35,12 @@ export default function UserBadge({ collapsed = false }: Props) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!authEnabled) {
-      console.log("[UserBadge] auth disabled");
-      return;
-    }
+    if (!authEnabled) return;
     const supabase = createClient();
-    console.log("[UserBadge] mounted, checking auth state");
     let cancelled = false;
 
-    async function load(evt?: string) {
-      const { data, error } = await supabase.auth.getUser();
-      console.log(
-        "[UserBadge]",
-        evt ? `event=${evt}` : "initial",
-        "getUser →",
-        { user: data?.user?.email ?? null, error: error?.message ?? null },
-      );
+    async function load() {
+      const { data } = await supabase.auth.getUser();
       if (cancelled) return;
       const user = data?.user ?? null;
       setEmail(user?.email ?? null);
@@ -70,16 +60,14 @@ export default function UserBadge({ collapsed = false }: Props) {
           ),
       ]);
       if (cancelled) return;
-      console.log("[UserBadge] profile=", profileRes.data, "usage=", usageRes.count);
       const tier = profileRes.data?.tier ?? "free";
       const limit = tier === "pro" ? 100 : tier === "unlimited" ? null : 5;
       setProfile({ tier, used: usageRes.count ?? 0, limit });
     }
     load();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      console.log("[UserBadge] auth event:", event);
-      load(event);
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      load();
     });
     return () => {
       cancelled = true;
