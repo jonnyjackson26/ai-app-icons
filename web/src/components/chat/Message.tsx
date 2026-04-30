@@ -3,21 +3,30 @@
 import Link from "next/link";
 import IconPreview from "@/components/ui/IconPreview";
 import type { ChatMessage } from "@/lib/chatTypes";
+import { WELCOME_PLAIN } from "@/lib/welcome";
+import WelcomeBubble from "./WelcomeBubble";
 
 export default function Message({ message }: { message: ChatMessage }) {
   if (message.role === "assistant" && message.kind === "text") {
     const isError = message.tone === "error";
+    const isWelcome = !isError && message.content === WELCOME_PLAIN;
     return (
       <div className="flex justify-start">
         <div
-          className={`max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm whitespace-pre-wrap ${
+          className={`max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm ${
+            isWelcome ? "" : "whitespace-pre-wrap"
+          } ${
             isError
               ? "bg-red-50 text-red-800 border border-red-200 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900"
               : "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
           }`}
         >
-          {message.content}
-          {message.streaming && (
+          {isWelcome ? (
+            <WelcomeBubble animate={message.streaming === true} />
+          ) : (
+            message.content
+          )}
+          {message.streaming && !isWelcome && (
             <span className="inline-block w-1.5 h-4 align-middle ml-0.5 bg-current animate-pulse" />
           )}
           {message.cta && (
