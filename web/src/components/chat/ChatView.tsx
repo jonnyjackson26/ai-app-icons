@@ -17,14 +17,9 @@ import {
   generateIcon,
 } from "@/lib/api";
 import { newId, type ChatMessage } from "@/lib/chatTypes";
-import { useStreamText } from "@/lib/useStreamText";
 import { createClient } from "@/lib/supabase/browser";
 import { CHAT_ICONS_BUCKET } from "@/lib/chatDb";
-
-const WELCOME =
-  "Welcome to ai-app-icons!\n" +
-  "First, I'll generate a logo for your app — just the artwork, no background yet. " +
-  "Once you like the logo, pick a background and I'll generate every asset your Expo app needs (iOS, Android, splash, favicon) for full platform coverage.";
+import { WELCOME_PLAIN } from "@/lib/welcome";
 
 // A single generate/edit attempt, shaped so it can be replayed after sign-in.
 type RequestPayload =
@@ -134,26 +129,11 @@ export default function ChatView() {
       id,
       role: "assistant",
       kind: "text",
-      content: "",
+      content: WELCOME_PLAIN,
       streaming: true,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useStreamText(
-    WELCOME,
-    (partial) => {
-      const id = welcomeIdRef.current;
-      if (!id) return;
-      updateMessage(id, { content: partial });
-    },
-    () => {
-      const id = welcomeIdRef.current;
-      if (!id) return;
-      updateMessage(id, { streaming: false });
-    },
-    { enabled: welcomeIdRef.current !== null },
-  );
 
   const hasIcon = !!(data.iconBase64 || data.iconUrl);
 
