@@ -3,9 +3,18 @@
   "version": "0.1.1",
   "description": "Generate AI app icons and wire them into your Expo project in one command.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonnyjackson26/ai-app-icons.git",
+    "directory": "create-app-icon"
+  },
+  "homepage": "https://github.com/jonnyjackson26/ai-app-icons/tree/main/create-app-icon#readme",
+  "bugs": {
+    "url": "https://github.com/jonnyjackson26/ai-app-icons/issues"
+  },
   "type": "module",
   "bin": {
-    "create-app-icon": "./dist/index.js"
+    "create-app-icon": "dist/index.js"
   },
   "files": [
     "dist",
