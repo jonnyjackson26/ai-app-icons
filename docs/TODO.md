@@ -1,3 +1,11 @@
+# URGENT: when i click manage subscription i get 0hnh.6n-z~cz_.js:59  POST https://ai-app-icons.vercel.app/api/stripe/portal 500 (Internal Server Error)
+Failed to execute 'json' on 'Response': Unexpected end of JSON input
+
+why?
+
+
+
+
 find where the current icon.png is in the project and put all icons there.
 
 also, would it have been better overall in the long run to just have the backend be ts not python? then exactly use the same code in this create-app-icon package?
