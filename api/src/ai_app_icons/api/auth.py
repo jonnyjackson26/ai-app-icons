@@ -1,8 +1,12 @@
 """Auth dependency for FastAPI routes.
 
-Verifies a Supabase JWT on every authed request. CLI callers don't hit the
-API directly — they proxy through the browser wizard, which uses the user's
-Supabase session. So there's no CLI-token path here.
+Two credential types are accepted on the `Authorization: Bearer` header:
+
+* A Supabase JWT — used by the browser wizard, which proxies the user's
+  Supabase session.
+* A personal API key (prefix ``cak_``) — used by the CLI's non-interactive
+  ``--ai`` mode. Keys are minted in the web dashboard and stored hashed in the
+  ``api_keys`` table; we look them up by sha256 here.
 
 When SUPABASE_URL is unset, returns a synthetic self-host user that downstream
 quota checks treat as unlimited. This is the escape hatch for OSS self-hosters.
@@ -10,9 +14,11 @@ quota checks treat as unlimited. This is the escape hatch for OSS self-hosters.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any
 
@@ -31,7 +37,10 @@ class User:
     id: str
     email: str | None
     tier: str
-    source: str  # 'jwt' | 'self_host'
+    source: str  # 'jwt' | 'api_key' | 'self_host'
+
+
+API_KEY_PREFIX = "cak_"
 
 
 def _auth_enabled() -> bool:
@@ -89,6 +98,57 @@ def _verify_supabase_jwt(token: str) -> dict[str, Any]:
         raise _unauthorized(f"Invalid token: {e}")
 
 
+def _verify_api_key(token: str) -> User:
+    """Resolve a CLI API key (``cak_...``) to a User via the api_keys table.
+
+    Looks the key up by sha256 hash among non-revoked rows. Raises 401 for an
+    unknown/revoked key, 503 if the lookup itself fails (so a Supabase outage
+    doesn't masquerade as a bad key).
+    """
+    key_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    client = get_service_client()
+    try:
+        res = (
+            client.table("api_keys")
+            .select("id, user_id")
+            .eq("key_hash", key_hash)
+            .is_("revoked_at", "null")
+            .limit(1)
+            .execute()
+        )
+    except Exception:
+        logger.exception("[auth] api_key lookup failed")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Auth service unavailable; try again shortly.",
+        )
+
+    rows = res.data or []
+    if not rows:
+        raise _unauthorized("Invalid or revoked API key.")
+    row = rows[0]
+    user_id = row["user_id"]
+
+    # Best-effort timestamp so the dashboard can show "last used"; never block
+    # the request on it.
+    try:
+        client.table("api_keys").update(
+            {"last_used_at": datetime.now(timezone.utc).isoformat()}
+        ).eq("id", row["id"]).execute()
+    except Exception:
+        logger.warning("[auth] failed to touch api_key.last_used_at", exc_info=True)
+
+    profile = _fetch_profile(user_id)
+    user = User(
+        id=user_id,
+        email=None,
+        tier=profile.get("tier", "free"),
+        source="api_key",
+    )
+    logger.info("[auth] api_key user=%s tier=%s", user.id, user.tier)
+    return user
+
+
 def _fetch_profile(user_id: str) -> dict[str, Any]:
     # Raises on infrastructure failures so a Supabase outage surfaces as 503
     # instead of silently downgrading every signed-in user to the free tier.
@@ -133,6 +193,9 @@ async def get_current_user(
     logger.info(
         "[auth] bearer received: prefix=%s... len=%d", token[:12], len(token)
     )
+
+    if token.startswith(API_KEY_PREFIX):
+        return _verify_api_key(token)
 
     claims = _verify_supabase_jwt(token)
     user_id = claims.get("sub")

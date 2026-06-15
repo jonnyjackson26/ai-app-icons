@@ -61,6 +61,16 @@ npx create-app-icon
 
 Calls `https://ai-app-icons.fly.dev` by default; override with `--api-url` or `AI_APP_ICONS_API_URL`. See [create-app-icon/README.md](create-app-icon/README.md) for all flags.
 
+#### Non-interactive `--ai` mode (CI / scripting)
+
+Pass `--ai "<description>"` to skip all prompts and the browser — the CLI generates the icon and writes everything in one shot:
+
+```bash
+AI_APP_ICONS_API_KEY=cak_... npx create-app-icon --ai "an app icon for kite flying locations"
+```
+
+Against the hosted backend this needs an **API key**. Create one in the web app at **Settings → API keys** (`https://ai-app-icons.vercel.app/settings/api-keys`), then pass it via the `AI_APP_ICONS_API_KEY` environment variable or `--api-key`. Optional `--style <id>` and `--background <preset|#hex>` override the defaults. Self-hosted backends with auth disabled need no key.
+
 ### CLI (Python, interactive)
 
 ```bash

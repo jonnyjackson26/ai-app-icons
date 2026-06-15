@@ -32,9 +32,31 @@ Supported config files (auto-detected, in Expo's resolution order):
 - `app.config.json`
 - `app.json`
 
+## Non-interactive (`--ai`)
+
+For CI or scripting, `--ai "<description>"` runs with **no prompts and no
+browser** — it generates the icon, writes the PNGs, and patches the config in
+one shot (implies `--yes`):
+
+```sh
+AI_APP_ICONS_API_KEY=cak_... npx create-app-icon --ai "an app icon for kite flying locations"
+```
+
+Against the hosted backend this requires an **API key**. Create one at
+`https://ai-app-icons.vercel.app/settings/api-keys` and pass it via the
+`AI_APP_ICONS_API_KEY` environment variable or `--api-key`. If no key is found
+and the backend requires auth, the CLI exits with an error rather than opening a
+browser. Self-hosted backends with auth disabled need no key.
+
 ## Options
 
 ```
+--ai <description> Non-interactive: generate from this description with no
+                   prompts/browser. Implies --yes. Needs an API key (below).
+--api-key <key>    API key for the hosted backend (also: AI_APP_ICONS_API_KEY)
+--style <id>       Style/mode id. Defaults to the server's default style.
+--background <v>   Background preset id (cream, peach, sage, frost, slate,
+                   aurora) or hex (#RGB / #RRGGBB). Default: cream. Alias: --bg.
 --output <dir>     Asset output directory. Defaults to the folder that already
                    holds your icon (from the Expo config); falls back to
                    ./assets.
@@ -49,8 +71,8 @@ Supported config files (auto-detected, in Expo's resolution order):
 --version, -v      Show version
 ```
 
-Environment: `AI_APP_ICONS_API_URL` overrides the backend URL, same as
-`--api-url`.
+Environment: `AI_APP_ICONS_API_URL` overrides the backend URL (same as
+`--api-url`); `AI_APP_ICONS_API_KEY` supplies the API key (same as `--api-key`).
 
 ## When it can't patch automatically
 

@@ -11,6 +11,10 @@ export interface CliArgs {
   apiUrlOverridden: boolean;
   webUrl: string;
   webTimeoutSec: number;
+  ai: string | null;
+  apiKey: string | null;
+  style: string | null;
+  background: string | null;
 }
 
 const DEFAULT_API_URL = "https://ai-app-icons.fly.dev";
@@ -34,6 +38,10 @@ export function parseArgs(argv: string[]): CliArgs {
       process.env.AI_APP_ICONS_WEB_URL || DEFAULT_WEB_URL,
     ),
     webTimeoutSec: DEFAULT_WEB_TIMEOUT_SEC,
+    ai: null,
+    apiKey: process.env.AI_APP_ICONS_API_KEY || null,
+    style: null,
+    background: null,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -73,6 +81,19 @@ export function parseArgs(argv: string[]): CliArgs {
       case "--web-url":
         args.webUrl = stripTrailingSlash(requireValue(argv, ++i, a));
         break;
+      case "--ai":
+        args.ai = requireValue(argv, ++i, a);
+        break;
+      case "--api-key":
+        args.apiKey = requireValue(argv, ++i, a);
+        break;
+      case "--style":
+        args.style = requireValue(argv, ++i, a);
+        break;
+      case "--background":
+      case "--bg":
+        args.background = requireValue(argv, ++i, a);
+        break;
       case "--web-timeout": {
         const raw = requireValue(argv, ++i, a);
         const n = Number(raw);
@@ -107,6 +128,20 @@ export const HELP_TEXT = `create-app-icon — generate AI app icons and wire the
 
 Usage:
   npx create-app-icon [options]
+  npx create-app-icon --ai "<description>" [options]
+
+Non-interactive (--ai):
+  --ai <description>     Generate from this description with no prompts and no
+                         browser. Implies --yes. Requires an API key against the
+                         hosted backend (see below).
+  --api-key <key>        API key for the hosted backend. Also read from the
+                         AI_APP_ICONS_API_KEY environment variable. Create one at
+                         <web-url>/settings/api-keys.
+  --style <id>           Style/mode id (see the wizard). Defaults to the server's
+                         default style.
+  --background <value>   Background as a preset id (cream, peach, sage, frost,
+                         slate, aurora) or a hex color (#RGB / #RRGGBB).
+                         Defaults to cream. Alias: --bg.
 
 Options:
   --output <dir>         Where to write PNG assets. Defaults to the directory

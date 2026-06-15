@@ -1,23 +1,6 @@
 import prompts from "prompts";
 import type { BackgroundConfig, ModeInfo } from "./api.js";
-
-export interface BackgroundPreset {
-  id: string;
-  name: string;
-  colors: string[];
-  direction: string;
-}
-
-// Mirrors a small curated subset of web/src/lib/backgroundPresets.ts.
-// Kept Apple-style and intentionally short so the CLI prompt stays readable.
-export const PRESETS: BackgroundPreset[] = [
-  { id: "cream",    name: "Cream",    colors: ["#ffffff", "#f3f0e7"], direction: "to-bottom-right" },
-  { id: "peach",    name: "Peach",    colors: ["#ffecd2", "#fcb69f"], direction: "to-bottom-right" },
-  { id: "sage",     name: "Sage",     colors: ["#e3ebe3", "#b5c9b5"], direction: "to-bottom-right" },
-  { id: "frost",    name: "Frost",    colors: ["#e3f2fd", "#bbdefb"], direction: "to-bottom-right" },
-  { id: "slate",    name: "Slate",    colors: ["#e2e8f0", "#cbd5e1"], direction: "to-bottom-right" },
-  { id: "aurora",   name: "Aurora",   colors: ["#1d976c", "#93f9b9"], direction: "to-bottom-right" },
-];
+import { PRESETS, presetToConfig, type BackgroundPreset } from "./backgrounds.js";
 
 function onCancel(): never {
   console.log("\nCancelled.");
@@ -97,8 +80,7 @@ export async function promptBackground(): Promise<BackgroundConfig> {
     return { type: "solid", color: color.trim() };
   }
 
-  const p = preset as BackgroundPreset;
-  return { type: "gradient", colors: p.colors, direction: p.direction };
+  return presetToConfig(preset as BackgroundPreset);
 }
 
 export async function promptConfirm(message: string, initial = true): Promise<boolean> {

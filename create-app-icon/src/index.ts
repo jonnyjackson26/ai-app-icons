@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import kleur from "kleur";
 import { ApiClient, ApiError, type AssetsResponse } from "./api.js";
 import { HELP_TEXT, parseArgs, type CliArgs } from "./args.js";
+import { resolveBackground } from "./backgrounds.js";
 import {
   classifyExplicit,
   detectExpoConfig,
@@ -34,12 +35,16 @@ async function main(): Promise<void> {
 
   console.log(kleur.bold().cyan("\ncreate-app-icon\n"));
 
+  // --ai runs fully non-interactively, so never show the final confirm prompt.
+  if (args.ai) args.yes = true;
+
   // Probe the backend. If it requires auth, force the browser wizard — that's
   // where login happens. The terminal flow is only available when the server
   // doesn't require auth (self-host) because the CLI itself has no way to
-  // mint a JWT.
+  // mint a JWT. --ai is exempt: it authenticates with an API key instead of
+  // the browser, so we never force the wizard for it.
   const authRequired = await probeAuthRequired(args.apiUrl);
-  if (authRequired && !args.web) {
+  if (authRequired && !args.web && !args.ai) {
     console.log(
       kleur.dim(
         "This backend requires sign-in. Launching the browser wizard...",
@@ -75,7 +80,9 @@ async function main(): Promise<void> {
   }
 
   let result: AssetsResponse;
-  if (args.web) {
+  if (args.ai) {
+    result = await runAiFlow(args, authRequired);
+  } else if (args.web) {
     result = await runWebFlow({
       webUrl: args.webUrl,
       timeoutMs: args.webTimeoutSec * 1000,
@@ -103,7 +110,7 @@ async function probeAuthRequired(apiUrl: string): Promise<boolean> {
 }
 
 async function runTerminalFlow(args: CliArgs): Promise<AssetsResponse> {
-  const api = new ApiClient(args.apiUrl);
+  const api = new ApiClient(args.apiUrl, args.apiKey);
 
   let modes;
   try {
@@ -127,6 +134,67 @@ async function runTerminalFlow(args: CliArgs): Promise<AssetsResponse> {
   const background = await promptBackground();
 
   console.log(kleur.dim("\nGenerating all asset sizes..."));
+  let result: AssetsResponse;
+  try {
+    result = await api.generateAssets(imageBase64, background);
+  } catch (err) {
+    fatal(apiErrorMessage(err, args.apiUrl));
+  }
+  console.log(kleur.green(`  ${result.assets.length} assets generated.`));
+  return result;
+}
+
+/**
+ * Fully non-interactive flow for `--ai "<description>"`. No prompts, no
+ * browser: authenticate with an API key, generate the icon + assets using
+ * sensible defaults (overridable via --style / --background), and hand off to
+ * finalizeResult (which won't prompt because args.yes was forced true).
+ */
+async function runAiFlow(
+  args: CliArgs,
+  authRequired: boolean,
+): Promise<AssetsResponse> {
+  if (authRequired && !args.apiKey) {
+    fatal(
+      "This backend requires an API key for non-interactive (--ai) mode.\n" +
+        `  Create one at ${args.webUrl}/settings/api-keys, then pass it via the\n` +
+        "  AI_APP_ICONS_API_KEY environment variable or the --api-key flag.",
+    );
+  }
+
+  // Resolve the background up front so a bad --background fails before any
+  // network call.
+  let background;
+  try {
+    background = resolveBackground(args.background);
+  } catch (err) {
+    fatal(err instanceof Error ? err.message : String(err));
+  }
+
+  const api = new ApiClient(args.apiUrl, args.apiKey);
+
+  // Style: explicit --style wins; otherwise fall back to the server's default.
+  let mode = args.style;
+  if (!mode) {
+    try {
+      const modes = await api.getModes();
+      mode = modes.find((m) => m.is_default)?.id ?? null;
+    } catch (err) {
+      fatal(apiErrorMessage(err, args.apiUrl));
+    }
+  }
+
+  const description = args.ai as string;
+  console.log(kleur.dim(`\nGenerating your icon for: ${kleur.cyan(description)}`));
+  let imageBase64: string;
+  try {
+    imageBase64 = await api.generateIcon(description, mode);
+  } catch (err) {
+    fatal(apiErrorMessage(err, args.apiUrl));
+  }
+  console.log(kleur.green("  icon generated."));
+
+  console.log(kleur.dim("Generating all asset sizes..."));
   let result: AssetsResponse;
   try {
     result = await api.generateAssets(imageBase64, background);
@@ -256,9 +324,10 @@ function apiErrorMessage(err: unknown, apiUrl: string): string {
   if (err instanceof ApiError) {
     if (err.status === 401) {
       return (
-        "The backend requires sign-in. Re-run without --api-url to use " +
-        "the hosted wizard, or point --api-url at a self-hosted backend that " +
-        "doesn't require auth."
+        "Authentication failed (401). For --ai, check your API key " +
+        "(AI_APP_ICONS_API_KEY or --api-key) is valid and not revoked. " +
+        "Otherwise re-run without --api-url to use the hosted wizard, or point " +
+        "--api-url at a self-hosted backend that doesn't require auth."
       );
     }
     if (err.status === 429) {

@@ -204,6 +204,13 @@ export default function BillingModal({ open, onClose, intent }: BillingModalProp
                 {busyAction === "portal" ? "Opening…" : "Manage subscription"}
               </button>
             )}
+
+            <a
+              href="/settings/api-keys"
+              className="mt-4 block text-center text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+            >
+              Manage API keys for the CLI (--ai mode) →
+            </a>
           </>
         )}
 
